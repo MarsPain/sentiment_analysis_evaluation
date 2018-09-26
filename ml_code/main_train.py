@@ -1,10 +1,10 @@
 #!/user/bin/env python
 # -*- coding:utf-8 -*-
 
-from data_utils import load_data_from_csv, seg_words
-from model import TextClassifier
+from ml_code.data_utils import load_data_from_csv, seg_words
+from ml_code.model import TextClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-import config
+from ml_code import config
 import logging
 import numpy as np
 from sklearn.externals import joblib
