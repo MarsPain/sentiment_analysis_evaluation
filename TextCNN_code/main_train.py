@@ -11,7 +11,7 @@ import logging
 import os
 import argparse
 from TextCNN_code.data_utils import seg_words, create_dict
-from TextCNN_code.utils import load_data_from_csv
+from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict, load_vector
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
@@ -102,6 +102,18 @@ class Main:
         # print(self.vocab_size)
         self.num_classes = len(self.label_to_index)
         # print(self.num_classes)
+
+    def get_data(self):
+        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test.pkl")
+        if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
+            with open(train_valid_test, 'rb') as data_f:
+                train_data, valid_data, test_data, true_label_pert = pickle.load(data_f)
+        else:   # 读取数据集并创建训练集、验证集和测试集
+            pass
+            # 用训练集训练tfidf模型vectorizer_tfidf
+            # 从训练集中获取true_label_pert（非-2的情感）
+            # 用一个函数分别对训练集、验证集和测试集进行打包（评论、tfidf特征向量、标签字典）
+            # 得到batch生成器
 
 if __name__ == "__main__":
     main = Main()
