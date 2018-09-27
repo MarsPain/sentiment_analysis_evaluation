@@ -6,11 +6,12 @@ import csv
 import json
 from collections import OrderedDict
 import pickle
-import config
+from TextCNN_code import config
 import logging
 import os
 import argparse
-from TextCNN_code.data_utils import load_data_from_csv, seg_words
+from TextCNN_code.data_utils import seg_words, create_dict
+from TextCNN_code.utils import load_data_from_csv
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
@@ -50,6 +51,13 @@ class Main:
         self.validate_data_df = None
         self.string_train = None    # 训练集的评论字符串
         self.columns = None  # 列索引的名称
+        self.label_list = None  # 用一个字典保存各个评价对象的标签列表
+        self.word_to_index = None   # word到index的映射字典
+        self.index_to_word = None   # index到字符word的映射字典
+        self.label_to_index = None   # label到index的映射字典
+        self.index_to_label = None  # index到label的映射字典
+        self.vocab_size = None  # 字符的词典大小
+        self.num_classes = None  # 类别标签数量
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
@@ -72,11 +80,31 @@ class Main:
         logger.info("complete seg train data")
         self.columns = self.train_data_df.columns.values.tolist()
         # print(self.columns)
+        logger.info("load label data")
+        self.label_list = {}
+        for column in self.columns[2:]:
+            label_train = list(self.train_data_df[column].iloc[:])
+            self.label_list[column] = label_train
+        # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
     def get_dict(self):
-        pass
+        if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
+            os.makedirs(FLAGS.pkl_dir)
+        word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict.pkl")    # 存储word和label与index之间的双向映射字典
+        if os.path.exists(word_label_dict):  # 若word_label_path已存在
+            with open(word_label_dict, 'rb') as dict_f:
+                self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = pickle.load(dict_f)
+        else:   # 重新读取训练数据并创建各个映射字典
+            self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = \
+                create_dict(self.string_train, self.label_list, word_label_dict)
+        print(self.word_to_index)
+        self.vocab_size = len(self.word_to_index)
+        # print(self.vocab_size)
+        self.num_classes = len(self.label_to_index)
+        # print(self.num_classes)
 
 if __name__ == "__main__":
     main = Main()
     main.get_parser()
     main.load_data()
+    main.get_dict()
