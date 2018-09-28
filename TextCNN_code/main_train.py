@@ -8,9 +8,10 @@ from collections import OrderedDict
 import pickle
 from TextCNN_code import config
 import logging
+from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import argparse
-from TextCNN_code.data_utils import seg_words, create_dict
+from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight
 from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict, load_vector
 
 FLAGS = tf.app.flags.FLAGS
@@ -47,8 +48,8 @@ logger = logging.getLogger(__name__)
 class Main:
     def __init__(self):
         self.model_name = None  # 保存模型的文件夹
-        self.train_data_df = None
-        self.validate_data_df = None
+        self.train_data_df = None   # 训练集
+        self.validate_data_df = None    # 验证集
         self.string_train = None    # 训练集的评论字符串
         self.columns = None  # 列索引的名称
         self.label_list = None  # 用一个字典保存各个评价对象的标签列表
@@ -107,11 +108,15 @@ class Main:
         train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
-                train_data, valid_data, test_data, true_label_pert = pickle.load(data_f)
-        else:   # 读取数据集并创建训练集、验证集和测试集
+                train_data, valid_data, test_data, label_weight_list = pickle.load(data_f)
+        else:   # 读取数据集并创建训练集、验证集
             pass
             # 用训练集训练tfidf模型vectorizer_tfidf
-            # 从训练集中获取true_label_pert（非-2的情感）
+            self.vectorizer_tfidf = TfidfVectorizer(analyzer='word', ngram_range=(1, 5), min_df=5, norm='l2')
+            self.vectorizer_tfidf.fit(self.string_train)
+            # 从训练集中获取label_pert_list（存储标签比例）和label_weight_list（存储标签权重）
+            label_pert_dict = get_label_pert(self.train_data_df, self.columns)
+            label_weight_dict = get_labal_weight(label_pert_dict)
             # 用一个函数分别对训练集、验证集和测试集进行打包（评论、tfidf特征向量、标签字典）
             # 得到batch生成器
 
@@ -120,3 +125,4 @@ if __name__ == "__main__":
     main.get_parser()
     main.load_data()
     main.get_dict()
+    main.get_data()
