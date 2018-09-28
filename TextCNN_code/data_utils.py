@@ -95,6 +95,25 @@ def get_labal_weight(label_pert_dict):
         # sum_pert = sum(label_weight)
         # label_weight = [0.5+label_weight[0]/sum_pert, 0.5+label_weight[1]/sum_pert,
         #                 0.5+label_weight[2]/sum_pert, 0.5+label_weight[3]/sum_pert]
-        print("label_weight(1:-1:-2:0):", label_weight)
+        # print("label_weight(1:-1:-2:0):", label_weight)
         label_weight_dict[column] = label_weight
     return label_weight_dict
+
+
+def sentence_word_to_index(string, word_to_index):
+    sentences = []
+    for s in string:
+        # print(s)
+        word_list = s.split(" ")
+        # word_to_index只保存了预先设置的词库大小，所以没存储的词被初始化为UNK_ID
+        sentence = [word_to_index.get(word, UNK_ID) for word in word_list]
+        # print(sentence)
+        if len(word_list) != len(sentence):
+            print("Error!!!!!!!!!", len(word_list), len(sentence))
+        sentences.append(sentence)
+    # print("sentences:", sentences)
+    return sentences
+
+
+def shuffle_padding(string, label_list, vectorizer_tfidf):
+    pass

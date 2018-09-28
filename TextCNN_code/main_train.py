@@ -11,7 +11,8 @@ import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import argparse
-from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight
+from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
+    shuffle_padding, sentence_word_to_index
 from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict, load_vector
 
 FLAGS = tf.app.flags.FLAGS
@@ -51,14 +52,17 @@ class Main:
         self.train_data_df = None   # 训练集
         self.validate_data_df = None    # 验证集
         self.string_train = None    # 训练集的评论字符串
+        self.string_valid = None    # 训练集的评论字符串
         self.columns = None  # 列索引的名称
-        self.label_list = None  # 用一个字典保存各个评价对象的标签列表
+        self.label_train_list = None  # 用一个字典保存各个评价对象的标签列表
+        self.label_valid_list = None
         self.word_to_index = None   # word到index的映射字典
         self.index_to_word = None   # index到字符word的映射字典
         self.label_to_index = None   # label到index的映射字典
         self.index_to_label = None  # index到label的映射字典
         self.vocab_size = None  # 字符的词典大小
         self.num_classes = None  # 类别标签数量
+        self.vectorizer_tfidf = None  # tfidf模型vectorizer_tfidf
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
@@ -75,17 +79,23 @@ class Main:
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
         content_train = self.train_data_df.iloc[:100, 1]
+        content_valid = self.validate_data_df.iloc[:100, 1]
         logger.info("start seg train data")
         self.string_train = seg_words(content_train, FLAGS.tokenize_style)  # 根据tokenize_style对评论字符串进行分词
+        self.string_valid = seg_words(content_valid, FLAGS.tokenize_style)
         # print(self.string_train[0])
         logger.info("complete seg train data")
         self.columns = self.train_data_df.columns.values.tolist()
         # print(self.columns)
         logger.info("load label data")
-        self.label_list = {}
+        self.label_train_list = {}
         for column in self.columns[2:]:
             label_train = list(self.train_data_df[column].iloc[:])
-            self.label_list[column] = label_train
+            self.label_train_list[column] = label_train
+        self.label_valid_list = {}
+        for column in self.columns[2:]:
+            label_valid = list(self.validate_data_df[column].iloc[:])
+            self.label_valid_list[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
     def get_dict(self):
@@ -114,10 +124,17 @@ class Main:
             # 用训练集训练tfidf模型vectorizer_tfidf
             self.vectorizer_tfidf = TfidfVectorizer(analyzer='word', ngram_range=(1, 5), min_df=5, norm='l2')
             self.vectorizer_tfidf.fit(self.string_train)
+            # 获取训练集和验证集的tfidf特征向量
+
             # 从训练集中获取label_pert_list（存储标签比例）和label_weight_list（存储标签权重）
             label_pert_dict = get_label_pert(self.train_data_df, self.columns)
             label_weight_dict = get_labal_weight(label_pert_dict)
+            # 语句序列化，将句子中的word映射成index，作为模型输入
+            sentences_train = sentence_word_to_index(self.string_train, self.word_to_index)
+            sentences_valid = sentence_word_to_index(self.string_valid, self.word_to_index)
             # 用一个函数分别对训练集、验证集和测试集进行打包（评论、tfidf特征向量、标签字典）
+            train_data = shuffle_padding(sentences_train, self.label_train_list, self.vectorizer_tfidf)
+            valid_data = shuffle_padding(sentences_valid, self.label_valid_list, self.vectorizer_tfidf)
             # 得到batch生成器
 
 if __name__ == "__main__":
