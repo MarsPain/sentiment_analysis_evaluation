@@ -13,7 +13,7 @@ import os
 import argparse
 from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
     shuffle_padding, sentence_word_to_index, get_vector_tfidf, BatchManager, get_max_len,\
-    get_weights_for_current_batch
+    get_weights_for_current_batch, compute_confuse_matrix
 from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code.model import TextCNN
@@ -186,23 +186,21 @@ class Main:
                 print("going to increment epoch counter....")
                 sess.run(text_cnn.epoch_increment)
                 # valid
-                # if epoch % FLAGS.validate_every == 0:
-                #     eval_loss, eval_accc, f1_scoree, precision, recall, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration)
-                #     weights_dict = get_weights_label_as_standard_dict(weights_label)
-                #     print("label accuracy(used for label weight):==========>>>>", weights_dict)
-                #     print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f\tPrecision:%.3f\tRecall:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree, precision, recall))
-                #     # save model to checkpoint
-                #     if f1_scoree > best_f1_score:
-                #         save_path = FLAGS.ckpt_dir + "/model.ckpt"
-                #         print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
-                #               ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
-                #         saver.save(sess, save_path, global_step=epoch)
-                #         best_acc = eval_accc
-                #         best_f1_score = f1_scoree
-                #     if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 10 or epoch == 20 or epoch == 30 or epoch == 40)):
-                #         for i in range(1):  # decay learning rate if necessary.
-                #             print(i, "Going to decay learning rate by half.")
-                #             sess.run(text_cnn.learning_rate_decay_half_op)
+                if epoch % FLAGS.validate_every == 0:
+                    eval_loss, eval_accc, f1_scoree, precision, recall, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, colume_name)
+                    print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f\tPrecision:%.3f\tRecall:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree, precision, recall))
+                    # save model to checkpoint
+                    if f1_scoree > best_f1_score:
+                        save_path = FLAGS.ckpt_dir + "/model.ckpt"
+                        print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
+                              ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
+                        saver.save(sess, save_path, global_step=epoch)
+                        best_acc = eval_accc
+                        best_f1_score = f1_scoree
+                    if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 10 or epoch == 20 or epoch == 30 or epoch == 40)):
+                        for i in range(1):  # decay learning rate if necessary.
+                            print(i, "Going to decay learning rate by half.")
+                            sess.run(text_cnn.learning_rate_decay_half_op)
 
     def create_model(self, sess):
         text_cnn = TextCNN(self.num_classes, self.vocab_size, self.max_len)
@@ -228,6 +226,31 @@ class Main:
                 sess.run(t_assign_embedding)
                 print("using pre-trained word emebedding.ended...")
         return text_cnn, saver
+
+    def evaluate(self, sess, text_cnn, batch_manager, iteration, colume_name):
+        small_value = 0.00001
+        # file_object = open('data/log_predict_error.txt', 'a')
+        eval_loss, eval_accc, eval_counter = 0.0, 0.0, 0
+        eval_true_positive, eval_false_positive, eval_true_negative, eval_false_negative = 0, 0, 0, 0
+        weights_label = {}  # weight_label[label_index]=(number,correct)
+        for batch in batch_manager.iter_batch(shuffle=True):
+            eval_x, features_vector, eval_y_dict = batch
+            eval_y = eval_y_dict[colume_name]
+            weights = get_weights_for_current_batch(eval_y, self.label_weight_dict[colume_name])   # 根据类别权重参数更新训练集各标签的权重
+            feed_dict = {text_cnn.input_x: eval_x, text_cnn.features_vector: features_vector, text_cnn.input_y: eval_y,
+                         text_cnn.weights: weights, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
+            curr_eval_loss, curr_accc, logits = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits], feed_dict)
+            true_positive, false_positive, true_negative, false_negative = compute_confuse_matrix(logits, eval_y)
+            # write_predict_error_to_file(file_object, logits, eval_y, self.index_to_word, eval_x1, eval_x2)    # 获取被错误分类的样本（后期再添加）
+            eval_loss, eval_accc, eval_counter = eval_loss+curr_eval_loss, eval_accc+curr_accc, eval_counter+1
+            eval_true_positive, eval_false_positive = eval_true_positive+true_positive, eval_false_positive+false_positive
+            eval_true_negative, eval_false_negative = eval_true_negative+true_negative, eval_false_negative+false_negative
+        print("true_positive:", eval_true_positive, ";false_positive:", eval_false_positive, ";true_negative:", eval_true_negative, ";false_negative:", eval_false_negative)
+        p = float(eval_true_positive)/float(eval_true_positive+eval_false_positive+small_value)
+        r = float(eval_true_positive)/float(eval_true_positive+eval_false_negative+small_value)
+        f1_score = (2*p*r)/(p+r+small_value)
+        print("eval_counter:", eval_counter, ";eval_acc:", eval_accc)
+        return eval_loss/float(eval_counter), eval_accc/float(eval_counter), f1_score, p, r, weights_label
 
 if __name__ == "__main__":
     main = Main()

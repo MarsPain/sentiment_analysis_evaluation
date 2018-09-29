@@ -42,8 +42,8 @@ def create_dict(string_train, label_list, path):
     """
     word_to_index = {}
     index_to_word = {}
-    label_to_index = {1: 0, -1: 1, -2: 2, 0: 3}
-    index_to_label = {0: 1, 1: -1, 2: -2, 3: 0}
+    label_to_index = {1: 0, 0: 1, -1: 2, -2: 3}
+    index_to_label = {0: 1, 1: 0, 2: -1, 3: -2}
     word_to_index[_PAD] = PAD_ID
     index_to_word[PAD_ID] = _PAD
     word_to_index[_UNK] = UNK_ID
@@ -83,9 +83,9 @@ def get_label_pert(train_data_df, columns):
     for column in columns[2:]:
         label_list = list(train_data_df[column])
         label_1_true = 0
+        label_0 = 0
         label_1_false = 0
         label_2 = 0
-        label_0 = 0
         for label in label_list:
             if label == 1:
                 label_1_true += 1
@@ -99,9 +99,9 @@ def get_label_pert(train_data_df, columns):
         label_1_false_pert = label_1_false/len_data
         label_2_pert = label_2/len_data
         label_0_pert = label_0/len_data
-        # print("label_pert(1:-1:-2:0):", column, label_1_true_pert, label_1_false_pert,
-        #       label_2_pert, label_0_pert)
-        label_pert_dict[column] = [label_1_true_pert, label_1_false_pert, label_2_pert, label_0_pert]
+        # print("label_pert(1:0:-1:-2):", column, label_1_true_pert, label_0_pert, label_1_false_pert,
+        #       label_2_pert)
+        label_pert_dict[column] = [label_1_true_pert, label_0_pert, label_1_false_pert, label_2_pert]
     return label_pert_dict
 
 
@@ -112,7 +112,7 @@ def get_labal_weight(label_pert_dict):
         # sum_pert = sum(label_weight)
         # label_weight = [0.5+label_weight[0]/sum_pert, 0.5+label_weight[1]/sum_pert,
         #                 0.5+label_weight[2]/sum_pert, 0.5+label_weight[3]/sum_pert]
-        # print("label_weight(1:-1:-2:0):", label_weight)
+        # print("label_weight(1:0:-1:-2):", label_weight)
         label_weight_dict[column] = label_weight
     return label_weight_dict
 
@@ -216,10 +216,30 @@ def get_weights_for_current_batch(answer_list, weights_dict):
     for i, label in enumerate(answer_list):
         if label == 1:
             weights_list_batch[i] = weights_dict[0]
-        elif label == -1:
+        elif label == 0:
             weights_list_batch[i] = weights_dict[1]
-        elif label == -2:
+        elif label == -1:
             weights_list_batch[i] = weights_dict[2]
         else:
             weights_list_batch[i] = weights_dict[3]
     return weights_list_batch
+
+
+def compute_confuse_matrix(logit, label):
+    length = len(label)
+    true_positive = 0  # TP:if label is true('0/2/3'), and predict is true('0/2/3')
+    false_positive = 0  # FP:if label is false('1'),but predict is ture('0/2/3')
+    true_negative = 0  # TN:if label is false('0'),and predict is false('0')
+    false_negative = 0  # FN:if label is false('0/2/3'),but predict is true('1')
+    for i in range(length):
+        predict = np.argmax(logit[i])
+        if (predict == 0 and label[i] == 0) or (predict == 2 and label[i] == 2) or \
+                (predict == 3 and label[i] == 3):
+            true_positive += 1
+        elif predict == 1 and (label[i] == 0 or label[i] == 2 or label[i] == 3):
+            false_positive += 1
+        elif predict == 0 and label[i] == 0:
+            true_negative += 1
+        elif (predict == 0 or label[i] == 2 or label[i] == 3) and label[i] == 1:
+            false_negative += 1
+    return true_positive, false_positive, true_negative, false_negative
