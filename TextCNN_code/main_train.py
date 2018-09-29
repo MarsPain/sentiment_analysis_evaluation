@@ -12,8 +12,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import argparse
 from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
-    shuffle_padding, sentence_word_to_index, get_vector_tfidf, BatchManager
+    shuffle_padding, sentence_word_to_index, get_vector_tfidf, BatchManager, get_max_len
 from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict
+from TextCNN_code.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
@@ -40,7 +41,7 @@ tf.app.flags.DEFINE_boolean("decay_lr_flag", True, "whether manally decay lr")
 tf.app.flags.DEFINE_float("clip_gradients", config.clip_gradients, "clip_gradients")
 tf.app.flags.DEFINE_integer("validate_every", config.validate_every, "Validate every validate_every epochs.")
 tf.app.flags.DEFINE_float("dropout_keep_prob", config.dropout_keep_prob, "dropout keep probability")
-filter_sizes = [2, 3, 4]
+filter_sizes = config.filter_sizes
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
@@ -63,8 +64,8 @@ class Main:
         self.index_to_label = None  # index到label的映射字典
         self.vocab_size = None  # 字符的词典大小
         self.num_classes = None  # 类别标签数量
-        self.vectorizer_tfidf = None  # tfidf模型vectorizer_tfidf
         self.label_weight_dict = None   # 存储标签权重
+        self.max_len = None  # 设置评论序列最大长度
         self.train_batch_manager = None  # train数据batch生成类
         self.valid_batch_manager = None  # valid数据batch生成类
 
@@ -140,8 +141,9 @@ class Main:
             sentences_train = sentence_word_to_index(self.string_train, self.word_to_index)
             sentences_valid = sentence_word_to_index(self.string_valid, self.word_to_index)
             # 打乱数据、padding,并对评论序列、标签字典、特征向量打包
-            train_data = shuffle_padding(sentences_train, self.label_train_dict, train_vector_tfidf)
-            valid_data = shuffle_padding(sentences_valid, self.label_valid_dict, valid_vector_tfidf)
+            self.max_len = get_max_len(sentences_train)  # 设置最大评论序列长度
+            train_data = shuffle_padding(sentences_train, self.label_train_dict, train_vector_tfidf, self.max_len)
+            valid_data = shuffle_padding(sentences_valid, self.label_valid_dict, valid_vector_tfidf, self.max_len)
             with open(train_valid_test, "wb") as f:
                 pickle.dump([train_data, valid_data, self.label_weight_dict], f)
         print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
@@ -149,6 +151,37 @@ class Main:
         self.train_batch_manager = BatchManager(train_data, int(FLAGS.batch_size))
         print("训练集批次数量：", self.train_batch_manager.len_data)
         self.valid_batch_manager = BatchManager(valid_data, int(FLAGS.batch_size))
+
+    def train(self):
+        tf_config = tf.ConfigProto()
+        tf_config.gpu_options.allow_growth = True
+        with tf.Session(config=tf_config) as sess:
+            text_cnn, saver = self.create_model(sess, config)
+
+    def create_model(self, sess, config):
+        text_cnn = TextCNN(self.num_classes, self.vocab_size, self.max_len)
+        saver = tf.train.Saver()
+        # if os.path.exists(FLAGS.ckpt_dir+"checkpoint"):
+        #     print("Restoring Variables from Checkpoint.")
+        #     saver.restore(sess, tf.train.latest_checkpoint(FLAGS.ckpt_dir))
+        #     if FLAGS.decay_lr_flag:
+        #         for i in range(2):  # decay learning rate if necessary.
+        #             print(i, "Going to decay learning rate by half.")
+        #             sess.run(text_cnn.learning_rate_decay_half_op)
+        # else:
+        #     print('Initializing Variables')
+        #     sess.run(tf.global_variables_initializer())
+        #     if not os.path.exists(FLAGS.ckpt_dir):
+        #         os.makedirs(FLAGS.ckpt_dir)
+        #     if FLAGS.use_pretrained_embedding:  # 加载预训练的词向量
+        #         print("===>>>going to use pretrained word embeddings...")
+        #         old_emb_matrix = sess.run(text_cnn.Embedding.read_value())
+        #         new_emb_matrix = load_word_embedding(old_emb_matrix, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
+        #         word_embedding = tf.constant(new_emb_matrix, dtype=tf.float32)  # 转为tensor
+        #         t_assign_embedding = tf.assign(text_cnn.Embedding, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
+        #         sess.run(t_assign_embedding)
+        #         print("using pre-trained word emebedding.ended...")
+        # return text_cnn, saver
 
 if __name__ == "__main__":
     main = Main()

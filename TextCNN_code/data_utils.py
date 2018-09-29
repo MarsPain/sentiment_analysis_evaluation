@@ -132,7 +132,7 @@ def sentence_word_to_index(string, word_to_index):
     return sentences
 
 
-def shuffle_padding(sentences, label_dict, vector_tfidf):
+def shuffle_padding(sentences, label_dict, feature_vector, max_len):
     sentences_shuffle = []
     label_dict_shuffle = {}
     for column, label_list in label_dict.items():
@@ -141,18 +141,17 @@ def shuffle_padding(sentences, label_dict, vector_tfidf):
     len_data = len(sentences)
     random_perm = np.random.permutation(len_data)   # 对索引进行随机排序
     for index in random_perm:
-        if len(sentences[index]) != len(vector_tfidf[index]):
-            print("Error!!!!!!", len(sentences[index]), len(vector_tfidf))
+        if len(sentences[index]) != len(feature_vector[index]):
+            print("Error!!!!!!", len(sentences[index]), len(feature_vector))
         sentences_shuffle.append(sentences[index])
         for column, label_list in label_dict.items():
             label_dict_shuffle[column].append(label_list[index])
-        vector_tfidf_shuffle.append(vector_tfidf)
-    max_len = get_max_len(sentences)
+        vector_tfidf_shuffle.append(feature_vector)
     sentences_padding = pad_sequences(sentences_shuffle, max_len, PAD_ID)
     # print(sentences_padding[0])
     vector_tfidf_padding = pad_sequences(vector_tfidf_shuffle, max_len, PAD_ID)
     # print(vector_tfidf_padding[0])
-    data = [sentences_padding, label_dict_shuffle, vector_tfidf]
+    data = [sentences_padding, label_dict_shuffle, feature_vector]
     return data
 
 
