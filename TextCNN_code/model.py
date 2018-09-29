@@ -25,16 +25,15 @@ class TextCNN:
         # 设置占位符和变量
         self.Embedding = tf.get_variable("Embedding", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
         self.input_x = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x1")  # sentences
-        # print("input_x1:", self.input_x1)
-        self.features_vector = tf.placeholder(tf.float32, [None, None], name="features_vector")  # features_vector
-        # print("features_vector:", self.features_vector)
+        print("input_x:", self.input_x)
+        self.features_vector = tf.placeholder(tf.float32, [None, self.sequence_length], name="features_vector")  # features_vector
+        print("features_vector:", self.features_vector)
         self.input_y = tf.placeholder(tf.int32, [None, ], name="input_y")  # labels:[None,num_classes]
-        # print("input_y:", self.input_y)
+        print("input_y:", self.input_y)
         self.weights = tf.placeholder(tf.float32, [None, ], name="weights_label")  # 标签权重
-        # print("weights:", self.weights)
+        print("weights:", self.weights)
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
         self.iter = tf.placeholder(tf.int32)  # 记录training iteration
-        self.tst = tf.placeholder(tf.bool)
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
         self.epoch_step = tf.Variable(0, trainable=False, name="Epoch_Step")
         self.epoch_increment = tf.assign(self.epoch_step, tf.add(self.epoch_step, tf.constant(1)))

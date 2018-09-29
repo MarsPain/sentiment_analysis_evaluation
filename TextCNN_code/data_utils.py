@@ -194,7 +194,7 @@ class BatchManager:
             label_dict_mini_batch = {}
             for column, label_list in label_dict.items():
                 label_dict_mini_batch[column] = label_list[i*batch_size:(i+1)*batch_size]
-            batch_data.append([sentences, label_dict_mini_batch, vector_tfidf])
+            batch_data.append([sentences, vector_tfidf, label_dict_mini_batch])
         return batch_data
 
     def iter_batch(self, shuffle=False):
@@ -202,3 +202,18 @@ class BatchManager:
             random.shuffle(self.batch_data)
         for idx in range(self.len_data):
             yield self.batch_data[idx]
+
+
+def get_weights_for_current_batch(answer_list, weights_dict):
+    weights_list_batch = list(np.ones((len(answer_list))))
+    answer_list = list(answer_list)
+    for i, label in enumerate(answer_list):
+        if label == 1:
+            weights_list_batch[i] = weights_dict[0]
+        elif label == -1:
+            weights_list_batch[i] = weights_dict[1]
+        elif label == -2:
+            weights_list_batch[i] = weights_dict[2]
+        else:
+            weights_list_batch[i] = weights_dict[3]
+    return weights_list_batch
