@@ -141,9 +141,11 @@ class Main:
             # 从训练集中获取label_pert_dict（存储标签比例）label_weight_dict（存储标签权重）
             label_pert_dict = get_label_pert(self.train_data_df, self.columns)
             self.label_weight_dict = get_labal_weight(label_pert_dict)
-            # 语句序列化，将句子中的word映射成index，作为模型输入
-            sentences_train = sentence_word_to_index(self.string_train, self.word_to_index)
-            sentences_valid = sentence_word_to_index(self.string_valid, self.word_to_index)
+            # 语句序列化，将句子中的word和label映射成index，作为模型输入
+            sentences_train, self.label_train_dict = sentence_word_to_index(self.string_train, self.word_to_index, self.label_train_dict, self.label_to_index)
+            sentences_valid, self.label_valid_dict = sentence_word_to_index(self.string_valid, self.word_to_index, self.label_valid_dict, self.label_to_index)
+            # print(sentences_train[0])
+            # print(self.label_train_dict["location_traffic_convenience"])
             # 打乱数据、padding,并对评论序列、特征向量、标签字典打包
             # max_sentence = get_max_len(sentences_train)  # 获取最大评论序列长度
             train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, self.max_len)

@@ -42,8 +42,8 @@ def create_dict(string_train, label_list, path):
     """
     word_to_index = {}
     index_to_word = {}
-    label_to_index = {0: 0, 1: 1, -1: -1, -2: -2}
-    index_to_label = {0: 0, 1: 1, -1: -1, -2: -2}
+    label_to_index = {1: 0, -1: 1, -2: 2, 0: 3}
+    index_to_label = {0: 1, 1: -1, 2: -2, 3: 0}
     word_to_index[_PAD] = PAD_ID
     index_to_word[PAD_ID] = _PAD
     word_to_index[_UNK] = UNK_ID
@@ -117,7 +117,7 @@ def get_labal_weight(label_pert_dict):
     return label_weight_dict
 
 
-def sentence_word_to_index(string, word_to_index):
+def sentence_word_to_index(string, word_to_index, label_train_dict, label_to_index):
     sentences = []
     for s in string:
         # print(s)
@@ -129,7 +129,13 @@ def sentence_word_to_index(string, word_to_index):
             print("Error!!!!!!!!!", len(word_list), len(sentence))
         sentences.append(sentence)
     # print("sentences:", sentences)
-    return sentences
+    label_train_dict_new = {}
+    for column, label_list in label_train_dict.items():
+        label_train_dict_new[column] = []
+    for column, label_list in label_train_dict.items():
+        for label in label_list:
+            label_train_dict_new[column].append(label_to_index[label])
+    return sentences, label_train_dict_new
 
 
 def shuffle_padding(sentences, feature_vector, label_dict, max_len):
