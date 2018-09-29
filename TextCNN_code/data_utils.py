@@ -132,7 +132,7 @@ def sentence_word_to_index(string, word_to_index):
     return sentences
 
 
-def shuffle_padding(sentences, label_dict, feature_vector, max_len):
+def shuffle_padding(sentences, feature_vector, label_dict, max_len):
     sentences_shuffle = []
     label_dict_shuffle = {}
     for column, label_list in label_dict.items():
@@ -144,14 +144,14 @@ def shuffle_padding(sentences, label_dict, feature_vector, max_len):
         if len(sentences[index]) != len(feature_vector[index]):
             print("Error!!!!!!", len(sentences[index]), len(feature_vector))
         sentences_shuffle.append(sentences[index])
+        vector_tfidf_shuffle.append(feature_vector)
         for column, label_list in label_dict.items():
             label_dict_shuffle[column].append(label_list[index])
-        vector_tfidf_shuffle.append(feature_vector)
     sentences_padding = pad_sequences(sentences_shuffle, max_len, PAD_ID)
     # print(sentences_padding[0])
     vector_tfidf_padding = pad_sequences(vector_tfidf_shuffle, max_len, PAD_ID)
     # print(vector_tfidf_padding[0])
-    data = [sentences_padding, label_dict_shuffle, feature_vector]
+    data = [sentences_padding, vector_tfidf_padding, label_dict_shuffle]
     return data
 
 
@@ -189,11 +189,11 @@ class BatchManager:
         batch_data = []
         for i in range(num_batch):
             sentences = data[0][i*batch_size:(i+1)*batch_size]
-            label_dict = data[1]
+            vector_tfidf = data[1][i*batch_size:(i+1)*batch_size]
+            label_dict = data[2]
             label_dict_mini_batch = {}
             for column, label_list in label_dict.items():
                 label_dict_mini_batch[column] = label_list[i*batch_size:(i+1)*batch_size]
-            vector_tfidf = data[2][i*batch_size:(i+1)*batch_size]
             batch_data.append([sentences, label_dict_mini_batch, vector_tfidf])
         return batch_data
 

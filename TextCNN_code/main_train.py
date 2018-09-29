@@ -140,10 +140,10 @@ class Main:
             # 语句序列化，将句子中的word映射成index，作为模型输入
             sentences_train = sentence_word_to_index(self.string_train, self.word_to_index)
             sentences_valid = sentence_word_to_index(self.string_valid, self.word_to_index)
-            # 打乱数据、padding,并对评论序列、标签字典、特征向量打包
+            # 打乱数据、padding,并对评论序列、特征向量、标签字典打包
             self.max_len = get_max_len(sentences_train)  # 设置最大评论序列长度
-            train_data = shuffle_padding(sentences_train, self.label_train_dict, train_vector_tfidf, self.max_len)
-            valid_data = shuffle_padding(sentences_valid, self.label_valid_dict, valid_vector_tfidf, self.max_len)
+            train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, self.max_len)
+            valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, self.max_len)
             with open(train_valid_test, "wb") as f:
                 pickle.dump([train_data, valid_data, self.label_weight_dict], f)
         print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
