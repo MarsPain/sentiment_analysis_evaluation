@@ -55,8 +55,8 @@ class Main:
         self.string_train = None    # 训练集的评论字符串
         self.string_valid = None    # 训练集的评论字符串
         self.columns = None  # 列索引的名称
-        self.label_train_list = None  # 用一个字典保存各个评价对象的标签列表
-        self.label_valid_list = None
+        self.label_train_dict = None  # 用一个字典保存各个评价对象的标签列表
+        self.label_valid_dict = None
         self.word_to_index = None   # word到index的映射字典
         self.index_to_word = None   # index到字符word的映射字典
         self.label_to_index = None   # label到index的映射字典
@@ -64,6 +64,7 @@ class Main:
         self.vocab_size = None  # 字符的词典大小
         self.num_classes = None  # 类别标签数量
         self.vectorizer_tfidf = None  # tfidf模型vectorizer_tfidf
+        self.label_weight_dict = None   # 存储标签权重
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
@@ -89,14 +90,14 @@ class Main:
         self.columns = self.train_data_df.columns.values.tolist()
         # print(self.columns)
         logger.info("load label data")
-        self.label_train_list = {}
+        self.label_train_dict = {}
         for column in self.columns[2:]:
             label_train = list(self.train_data_df[column].iloc[:])
-            self.label_train_list[column] = label_train
-        self.label_valid_list = {}
+            self.label_train_dict[column] = label_train
+        self.label_valid_dict = {}
         for column in self.columns[2:]:
             label_valid = list(self.validate_data_df[column].iloc[:])
-            self.label_valid_list[column] = label_valid
+            self.label_valid_dict[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
     def get_dict(self):
@@ -108,7 +109,7 @@ class Main:
                 self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = pickle.load(dict_f)
         else:   # 重新读取训练数据并创建各个映射字典
             self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = \
-                create_dict(self.string_train, self.label_train_list, word_label_dict)
+                create_dict(self.string_train, self.label_train_dict, word_label_dict)
         print(len(self.word_to_index), self.word_to_index)
         self.vocab_size = len(self.word_to_index)
         # print(self.vocab_size)
@@ -119,26 +120,28 @@ class Main:
         train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
-                train_data, valid_data, test_data, label_weight_list = pickle.load(data_f)
+                train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
             pass
             # 获取tfidf值并存储为tfidf字典
             if not os.path.exists(FLAGS.tfidf_path):
                 get_tfidf_and_save(self.string_train, FLAGS.tfidf_path)
             tfidf_dict = load_tfidf_dict(FLAGS.tfidf_path)
-            # 根据tfidf_dict获取训练集和验证集的tfidf特征向量
+            # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
             train_vector_tfidf = get_vector_tfidf(self.string_train, tfidf_dict)
             valid_vector_tfidf = get_vector_tfidf(self.string_valid, tfidf_dict)
-            print(train_vector_tfidf[0])
-            # 从训练集中获取label_pert_list（存储标签比例）和label_weight_list（存储标签权重）
+            # print(train_vector_tfidf[0])
+            # 从训练集中获取label_pert_dict（存储标签比例）label_weight_dict（存储标签权重）
             label_pert_dict = get_label_pert(self.train_data_df, self.columns)
-            label_weight_dict = get_labal_weight(label_pert_dict)
+            self.label_weight_dict = get_labal_weight(label_pert_dict)
             # 语句序列化，将句子中的word映射成index，作为模型输入
             sentences_train = sentence_word_to_index(self.string_train, self.word_to_index)
             sentences_valid = sentence_word_to_index(self.string_valid, self.word_to_index)
-            # 用一个函数分别对训练集、验证集和测试集进行打包（评论、tfidf特征向量、标签字典）
-            # train_data = shuffle_padding(sentences_train, self.label_train_list, train_vector_tfidf)
-            # valid_data = shuffle_padding(sentences_valid, self.label_valid_list, valid_vector_tfidf)
+            # 打乱数据、padding,并对评论序列、标签字典、特征向量打包
+            train_data = shuffle_padding(sentences_train, self.label_train_dict, train_vector_tfidf)
+            valid_data = shuffle_padding(sentences_valid, self.label_valid_dict, valid_vector_tfidf)
+            with open(train_valid_test, "wb") as f:
+                pickle.dump([train_data, valid_data, self.label_weight_dict], f)
             # 得到batch生成器
 
 if __name__ == "__main__":
