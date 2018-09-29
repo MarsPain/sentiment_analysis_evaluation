@@ -12,7 +12,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import argparse
 from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
-    shuffle_padding, sentence_word_to_index, get_vector_tfidf
+    shuffle_padding, sentence_word_to_index, get_vector_tfidf, BatchManager
 from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict
 
 FLAGS = tf.app.flags.FLAGS
@@ -65,6 +65,8 @@ class Main:
         self.num_classes = None  # 类别标签数量
         self.vectorizer_tfidf = None  # tfidf模型vectorizer_tfidf
         self.label_weight_dict = None   # 存储标签权重
+        self.train_batch_manager = None  # train数据batch生成类
+        self.valid_batch_manager = None  # valid数据batch生成类
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
@@ -142,7 +144,11 @@ class Main:
             valid_data = shuffle_padding(sentences_valid, self.label_valid_dict, valid_vector_tfidf)
             with open(train_valid_test, "wb") as f:
                 pickle.dump([train_data, valid_data, self.label_weight_dict], f)
-            # 得到batch生成器
+        print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
+        # 获取train、valid数据的batch生成类
+        self.train_batch_manager = BatchManager(train_data, int(FLAGS.batch_size))
+        print("训练集批次数量：", self.train_batch_manager.len_data)
+        self.valid_batch_manager = BatchManager(valid_data, int(FLAGS.batch_size))
 
 if __name__ == "__main__":
     main = Main()

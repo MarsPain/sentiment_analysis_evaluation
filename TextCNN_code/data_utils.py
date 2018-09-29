@@ -2,8 +2,10 @@ import pandas as pd
 import jieba
 import pickle
 import numpy as np
+import math
 import re
 from collections import Counter
+import random
 
 PAD_ID = 0
 UNK_ID = 1
@@ -172,3 +174,32 @@ def pad_sequences(sequence, max_len, PAD_ID):
         else:
             sequence_padding.append(string)
     return sequence_padding
+
+
+class BatchManager:
+    """
+    用于生成batch数据的batch管理类
+    """
+    def __init__(self, data,  batch_size):
+        self.batch_data = self.get_batch(data, batch_size)
+        self.len_data = len(self.batch_data)
+
+    @staticmethod
+    def get_batch(data, batch_size):
+        num_batch = int(math.ceil(len(data[0]) / batch_size))
+        batch_data = []
+        for i in range(num_batch):
+            sentences = data[0][i*batch_size:(i+1)*batch_size]
+            label_dict = data[1]
+            label_dict_mini_batch = {}
+            for column, label_list in label_dict.items():
+                label_dict_mini_batch[column] = label_list[i*batch_size:(i+1)*batch_size]
+            vector_tfidf = data[2][i*batch_size:(i+1)*batch_size]
+            batch_data.append([sentences, label_dict_mini_batch, vector_tfidf])
+        return batch_data
+
+    def iter_batch(self, shuffle=False):
+        if shuffle:
+            random.shuffle(self.batch_data)
+        for idx in range(self.len_data):
+            yield self.batch_data[idx]
