@@ -181,7 +181,7 @@ class Main:
         #         t_assign_embedding = tf.assign(text_cnn.Embedding, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
         #         sess.run(t_assign_embedding)
         #         print("using pre-trained word emebedding.ended...")
-        # return text_cnn, saver
+        return text_cnn, saver
 
 if __name__ == "__main__":
     main = Main()

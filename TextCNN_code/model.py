@@ -24,10 +24,8 @@ class TextCNN:
         self.top_k = config.top_k
         # 设置占位符和变量
         self.Embedding = tf.get_variable("Embedding", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
-        self.input_x1 = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x1")  # sentences_1
+        self.input_x = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x1")  # sentences
         # print("input_x1:", self.input_x1)
-        self.input_x2 = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x2")  # sentences_2
-        # print("input_x2:", self.input_x2)
         self.features_vector = tf.placeholder(tf.float32, [None, None], name="features_vector")  # features_vector
         # print("features_vector:", self.features_vector)
         self.input_y = tf.placeholder(tf.int32, [None, ], name="input_y")  # labels:[None,num_classes]
@@ -53,9 +51,8 @@ class TextCNN:
         h_bluescore = tf.layers.dense(self.features_vector, self.hidden_size / 2, use_bias=True)   # features_vector
         h_bluescore = tf.nn.relu(h_bluescore)
         # cnn features from sentences_1 and sentences_2
-        x1 = self.conv_layers(self.input_x1, 1)  # [None,num_filters_total]
-        x2 = self.conv_layers(self.input_x2, 1, reuse_flag=True)  # [None,num_filters_total]
-        h_cnn = self.additive_attention(x1, x2, self.hidden_size / 2, "cnn_attention")
+        x = self.conv_layers(self.input_x, 1)  # [None,num_filters_total]
+        h_cnn = self.additive_attention(x, self.hidden_size / 2, "cnn_attention")
         h = tf.concat([h_cnn, h_bluescore], axis=1)  # concat feature
         h = tf.layers.dense(h, self.hidden_size, activation=tf.nn.relu, use_bias=True)  # fully connected layer
         h = tf.nn.dropout(h, keep_prob=self.dropout_keep_prob)
@@ -94,13 +91,12 @@ class TextCNN:
             h = tf.nn.dropout(h_pool_flat, keep_prob=self.dropout_keep_prob)    # [None,num_filters_total]
         return h
 
-    def additive_attention(self, x1, x2, dimension_size, vairable_scope):
+    def additive_attention(self, x, dimension_size, vairable_scope):
         with tf.variable_scope(vairable_scope):
             g = tf.get_variable("attention_g", initializer=tf.sqrt(1.0 / self.hidden_size))
             b = tf.get_variable("bias", shape=[dimension_size], initializer=tf.zeros_initializer)
-            x1 = tf.layers.dense(x1, dimension_size)  # [batch_size,hidden_size]
-            x2 = tf.layers.dense(x2, dimension_size)  # [batch_size,hidden_size]
-            h = g*tf.nn.relu(x1 + x2 + b)  # [batch_size,hidden_size]
+            x = tf.layers.dense(x, dimension_size)  # [batch_size,hidden_size]
+            h = g*tf.nn.relu(x + b)  # [batch_size,hidden_size]
         return h
 
     def loss(self, l2_lambda=0.0003):
@@ -116,8 +112,4 @@ class TextCNN:
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, 1, 1, staircase=True)
         train_op = tf.contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step, learning_rate=learning_rate,
                                                    optimizer="Adam", clip_gradients=self.clip_gradients)
-        # opt = tf.train.AdamOptimizer(self.lr)
-        # grads_vars = opt.compute_gradients(self.loss_val)
-        # capped_grads_vars = [[tf.clip_by_value(g, -self.clip_gradients, self.clip_gradients), v] for g, v in grads_vars]
-        # train_op = opt.apply_gradients(capped_grads_vars, self.global_step)
         return train_op
