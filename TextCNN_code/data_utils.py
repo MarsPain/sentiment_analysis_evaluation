@@ -150,7 +150,7 @@ def shuffle_padding(sentences, feature_vector, label_dict, max_len):
         if len(sentences[index]) != len(feature_vector[index]):
             print("Error!!!!!!", len(sentences[index]), len(feature_vector))
         sentences_shuffle.append(sentences[index])
-        vector_tfidf_shuffle.append(feature_vector)
+        vector_tfidf_shuffle.append(feature_vector[index])
         for column, label_list in label_dict.items():
             label_dict_shuffle[column].append(label_list[index])
     sentences_padding = pad_sequences(sentences_shuffle, max_len, PAD_ID)
@@ -172,7 +172,7 @@ def pad_sequences(sequence, max_len, PAD_ID):
     sequence_padding = []
     for string in sequence:
         if len(string) < max_len:
-            padding = [max_len] * (max_len - len(string))
+            padding = [PAD_ID] * (max_len - len(string))
             sequence_padding.append(string + padding)
         elif len(string) > max_len:
             sequence_padding.append(string[:max_len])

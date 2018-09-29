@@ -69,7 +69,7 @@ class Main:
         self.vocab_size = None  # 字符的词典大小
         self.num_classes = None  # 类别标签数量
         self.label_weight_dict = None   # 存储标签权重
-        self.max_len = 500  # 设置评论序列最大长度
+        self.max_len = 50  # 设置评论序列最大长度
         self.train_batch_manager = None  # train数据batch生成类
         self.valid_batch_manager = None  # valid数据batch生成类
 
@@ -175,20 +175,13 @@ class Main:
                     iteration += 1
                     input_x, features_vector, input_y_dict = batch
                     input_y = input_y_dict[colume_name]
-                    print(len(input_x), len(features_vector), len(input_y))
-                    input_x_a = np.asarray(input_x)
-                    features_vector_a = np.asarray(features_vector)
-                    input_y_a = np.asarray(input_y)
-                    print(input_x_a.shape, features_vector_a.shape, input_y_a.shape)
                     weights = get_weights_for_current_batch(input_y, self.label_weight_dict[colume_name])   # 根据类别权重参数更新训练集各标签的权重
-                    weights = np.asarray(weights)
-                    print(type(weights), weights.shape)
                     feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
                                  text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
                                  text_cnn.iter: iteration}
                     curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
                     loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                    if counter % 100 == 0:  # steps_check
+                    if counter % 1 == 0:  # steps_check
                         print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
                 print("going to increment epoch counter....")
                 sess.run(text_cnn.epoch_increment)

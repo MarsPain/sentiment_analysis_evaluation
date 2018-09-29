@@ -3,7 +3,7 @@
 
 import os
 model_save_path = os.path.abspath('..') + "/data"
-num_epochs = 30
+num_epochs = 10
 batch_size = 64
 tokenize_style = "word"
 embed_size = 100
