@@ -41,7 +41,7 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(train_data_path)
         self.validate_data_df = load_data_from_csv(validate_data_path)
-        content_train = self.train_data_df.iloc[:, 1]
+        content_train = self.train_data_df.iloc[:100, 1]
         logger.info("start seg train data")
         self.string_train = seg_words(content_train)
         logger.info("complete seg train data")
@@ -58,7 +58,7 @@ class Main:
         logger.info("start train model")
         self.classifier_dict = dict()
         for column in self.columns[2:]:
-            label_train = self.train_data_df[column].iloc[:]
+            label_train = self.train_data_df[column].iloc[:100]
             text_classifier = TextClassifier(vectorizer=self.vectorizer_tfidf)
             logger.info("start train %s model" % column)
             text_classifier.fit(self.string_train, label_train)

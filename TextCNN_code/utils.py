@@ -15,23 +15,25 @@ def get_tfidf_and_save(data, tfidf_path):
     :param tfidf_path:
     :return:
     """
-    corpus = []  # 用于生成tfidf值的语料库
-    for i, row in enumerate(data):
-        str1 = " ".join(jieba.cut(row[1]))
-        str2 = " ".join(jieba.cut(row[2]))
-        corpus.append(str1)
-        corpus.append(str2)
-    # print("string_list:", string_list)
-    tfidfvectorizer = TfidfVectorizer()
-    tfidf = tfidfvectorizer.fit_transform(corpus)
-    # print(tfidf)
-    tfidf = tfidfvectorizer.idf_
-    # print(tfidf)
-    word_to_tfidf = dict(zip(tfidfvectorizer.get_feature_names(), tfidf))
-    # print(word_to_tfidf)
+    vectorizer_tfidf = TfidfVectorizer()
+    vectorizer_tfidf.fit(data)
+    train_vector_tfidf = vectorizer_tfidf.transform(data)
+    # print("train_vector_tfidf", train_vector_tfidf[0])
+    tfidf_values_list = train_vector_tfidf.toarray()    # 保存所有句子所包含词汇的tfidf值的稀疏矩阵（失去了原有的句子的顺序）
+    # print("tfidf_values_list:", len(tfidf_values_list[0]), tfidf_values_list[0], sum(tfidf_values_list[0]))
+    word_list = vectorizer_tfidf.get_feature_names()    # 所有被赋tfidf值的单词列表
+    # print("word_list:", word_list)
+    word_to_tfidf = {}  # 存储word到tfidf的映射字典
+    # for i in range(len(tfidf_values_list)):
+    for i in range(len(tfidf_values_list)):
+        for j in range(len(word_list)):
+            tfidf_value = tfidf_values_list[i][j]
+            # print(word_list[j], float(tfidf_value))
+            if float(tfidf_value) != 0.0:
+                # print("YES")
+                word_to_tfidf[word_list[j]] = tfidf_value
     with open(tfidf_path, "w", encoding="utf-8") as f:
         for word, tfidf_score in word_to_tfidf.items():
-            # print(k)
             f.write(word+"|||"+str(tfidf_score)+"\n")
 
 
@@ -48,21 +50,3 @@ def load_tfidf_dict(tfidf_path):
             tfidf_dict[word] = float(tfidf_score)
     # print("tfidf_dict:", tfidf_dict)
     return tfidf_dict
-
-
-def load_vector(path):
-    """
-    加载词向量
-    :param path:预训练的词向量文件路径
-    :return:word-词向量的映射字典
-    """
-    vector_dict = {}
-    with open(path, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if i == 0 and 'word2vec' in path:
-                continue
-            word_vec = line.strip().split()
-            vec_list = [float(x) for x in word_vec[1:]]
-            vector_dict[word_vec[0]] = np.asarray(vec_list)
-    # print("vector_dict:", vector_dict)
-    return vector_dict

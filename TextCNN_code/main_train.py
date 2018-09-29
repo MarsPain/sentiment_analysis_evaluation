@@ -12,14 +12,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import argparse
 from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
-    shuffle_padding, sentence_word_to_index
-from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict, load_vector
+    shuffle_padding, sentence_word_to_index, get_vector_tfidf
+from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
 tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
+tf.app.flags.DEFINE_string("tfidf_path", "tfidf.txt", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_trainingset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("test_data_path", "../data/sentiment_analysis_testa.csv", "path of traning data.")
@@ -107,8 +108,8 @@ class Main:
                 self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = pickle.load(dict_f)
         else:   # 重新读取训练数据并创建各个映射字典
             self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = \
-                create_dict(self.string_train, self.label_list, word_label_dict)
-        print(self.word_to_index)
+                create_dict(self.string_train, self.label_train_list, word_label_dict)
+        print(len(self.word_to_index), self.word_to_index)
         self.vocab_size = len(self.word_to_index)
         # print(self.vocab_size)
         self.num_classes = len(self.label_to_index)
@@ -121,11 +122,14 @@ class Main:
                 train_data, valid_data, test_data, label_weight_list = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
             pass
-            # 用训练集训练tfidf模型vectorizer_tfidf
-            self.vectorizer_tfidf = TfidfVectorizer(analyzer='word', ngram_range=(1, 5), min_df=5, norm='l2')
-            self.vectorizer_tfidf.fit(self.string_train)
-            # 获取训练集和验证集的tfidf特征向量
-
+            # 获取tfidf值并存储为tfidf字典
+            if not os.path.exists(FLAGS.tfidf_path):
+                get_tfidf_and_save(self.string_train, FLAGS.tfidf_path)
+            tfidf_dict = load_tfidf_dict(FLAGS.tfidf_path)
+            # 根据tfidf_dict获取训练集和验证集的tfidf特征向量
+            # train_vector_tfidf = get_vector_tfidf(self.string_train, tfidf_dict)
+            # valid_vector_tfidf = get_vector_tfidf(self.string_valid, tfidf_dict)
+            # print(train_vector_tfidf[0])
             # 从训练集中获取label_pert_list（存储标签比例）和label_weight_list（存储标签权重）
             label_pert_dict = get_label_pert(self.train_data_df, self.columns)
             label_weight_dict = get_labal_weight(label_pert_dict)
@@ -133,8 +137,8 @@ class Main:
             sentences_train = sentence_word_to_index(self.string_train, self.word_to_index)
             sentences_valid = sentence_word_to_index(self.string_valid, self.word_to_index)
             # 用一个函数分别对训练集、验证集和测试集进行打包（评论、tfidf特征向量、标签字典）
-            train_data = shuffle_padding(sentences_train, self.label_train_list, self.vectorizer_tfidf)
-            valid_data = shuffle_padding(sentences_valid, self.label_valid_list, self.vectorizer_tfidf)
+            # train_data = shuffle_padding(sentences_train, self.label_train_list, train_vector_tfidf)
+            # valid_data = shuffle_padding(sentences_valid, self.label_valid_list, valid_vector_tfidf)
             # 得到batch生成器
 
 if __name__ == "__main__":

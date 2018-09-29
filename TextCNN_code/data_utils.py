@@ -60,6 +60,20 @@ def create_dict(string_train, label_list, path):
     return word_to_index, index_to_word, label_to_index, index_to_label
 
 
+def get_vector_tfidf(string, tfidf_dict):
+    vector_tfidf_list = []
+    for s in string:
+        vector_tfidf = []
+        word_list = s.split(" ")
+        for word in word_list:
+            if word in tfidf_dict:
+                vector_tfidf.append(tfidf_dict[word])
+            else:
+                vector_tfidf.append(1)
+        vector_tfidf_list.append(vector_tfidf)
+    return vector_tfidf_list
+
+
 def get_label_pert(train_data_df, columns):
     len_data = train_data_df.shape[0]
     label_pert_dict = {}
@@ -115,5 +129,5 @@ def sentence_word_to_index(string, word_to_index):
     return sentences
 
 
-def shuffle_padding(string, label_list, vectorizer_tfidf):
+def shuffle_padding(string, label_list, vector_tfidf):
     pass
