@@ -127,9 +127,9 @@ class Main:
                 get_tfidf_and_save(self.string_train, FLAGS.tfidf_path)
             tfidf_dict = load_tfidf_dict(FLAGS.tfidf_path)
             # 根据tfidf_dict获取训练集和验证集的tfidf特征向量
-            # train_vector_tfidf = get_vector_tfidf(self.string_train, tfidf_dict)
-            # valid_vector_tfidf = get_vector_tfidf(self.string_valid, tfidf_dict)
-            # print(train_vector_tfidf[0])
+            train_vector_tfidf = get_vector_tfidf(self.string_train, tfidf_dict)
+            valid_vector_tfidf = get_vector_tfidf(self.string_valid, tfidf_dict)
+            print(train_vector_tfidf[0])
             # 从训练集中获取label_pert_list（存储标签比例）和label_weight_list（存储标签权重）
             label_pert_dict = get_label_pert(self.train_data_df, self.columns)
             label_weight_dict = get_labal_weight(label_pert_dict)
