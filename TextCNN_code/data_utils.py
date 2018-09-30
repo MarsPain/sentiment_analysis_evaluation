@@ -233,13 +233,20 @@ def compute_confuse_matrix(logit, label):
     false_negative = 0  # FN:if label is false('0/2/3'),but predict is true('1')
     for i in range(length):
         predict = np.argmax(logit[i])
+        # print(predict, label[i])
         if (predict == 0 and label[i] == 0) or (predict == 2 and label[i] == 2) or \
                 (predict == 3 and label[i] == 3):
             true_positive += 1
         elif predict == 1 and (label[i] == 0 or label[i] == 2 or label[i] == 3):
+            # print("yes")
             false_positive += 1
         elif predict == 0 and label[i] == 0:
+            # print("yes")
             true_negative += 1
         elif (predict == 0 or label[i] == 2 or label[i] == 3) and label[i] == 1:
+            # print("yes")
             false_negative += 1
+        # elif predict == 3 and label[i] == 0:
+        #     pass
+            # print("yes!!!!!!")
     return true_positive, false_positive, true_negative, false_negative
