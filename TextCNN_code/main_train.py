@@ -158,56 +158,66 @@ class Main:
         print("训练集批次数量：", self.train_batch_manager.len_data)
         self.valid_batch_manager = BatchManager(valid_data, int(FLAGS.batch_size))
 
-    def train(self):
-        colume_name = "location_traffic_convenience"
-        tf_config = tf.ConfigProto()
-        tf_config.gpu_options.allow_growth = True
-        with tf.Session(config=tf_config) as sess:
-            text_cnn, saver = self.create_model(sess)
-            curr_epoch = sess.run(text_cnn.epoch_step)
-            iteration = 0
-            best_acc = 0.60
-            best_f1_score = 0.20
-            for epoch in range(curr_epoch, FLAGS.num_epochs):
-                loss, eval_acc, counter = 0.0, 0.0, 0
-                # train
-                for batch in self.train_batch_manager.iter_batch(shuffle=True):
-                    iteration += 1
-                    input_x, features_vector, input_y_dict = batch
-                    input_y = input_y_dict[colume_name]
-                    weights = get_weights_for_current_batch(input_y, self.label_weight_dict[colume_name])   # 根据类别权重参数更新训练集各标签的权重
-                    feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
-                                 text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
-                                 text_cnn.iter: iteration}
-                    curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
-                    loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                    if counter % 1 == 0:  # steps_check
-                        print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
-                print("going to increment epoch counter....")
-                sess.run(text_cnn.epoch_increment)
-                # valid
-                if epoch % FLAGS.validate_every == 0:
-                    eval_loss, eval_accc, f1_scoree, precision, recall, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, colume_name)
-                    print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f\tPrecision:%.3f\tRecall:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree, precision, recall))
-                    # save model to checkpoint
-                    if f1_scoree > best_f1_score:
-                        save_path = FLAGS.ckpt_dir + "/model.ckpt"
-                        print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
-                              ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
-                        saver.save(sess, save_path, global_step=epoch)
-                        best_acc = eval_accc
-                        best_f1_score = f1_scoree
-                    if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 10 or epoch == 20 or epoch == 30 or epoch == 40)):
-                        for i in range(1):  # decay learning rate if necessary.
-                            print(i, "Going to decay learning rate by half.")
-                            sess.run(text_cnn.learning_rate_decay_half_op)
+    def train_control(self):
+        """
+        控制针对每种评价对象分别进行训练、验证和模型保存，所有模型保存的文件夹都保存在总文件夹ckpt中
+        模型文件夹以评价对象进行命名
+        :return:
+        """
+        column_name_list = self.columns
+        for column_name in column_name_list[2:3]:
+            tf_config = tf.ConfigProto()
+            tf_config.gpu_options.allow_growth = True
+            with tf.Session(config=tf_config) as sess:
+                self.train(sess, column_name)
 
-    def create_model(self, sess):
+    def train(self, sess, column_name):
+        text_cnn, saver = self.create_model(sess, column_name)
+        curr_epoch = sess.run(text_cnn.epoch_step)
+        iteration = 0
+        best_acc = 0.60
+        best_f1_score = 0.20
+        for epoch in range(curr_epoch, FLAGS.num_epochs):
+            loss, eval_acc, counter = 0.0, 0.0, 0
+            # train
+            for batch in self.train_batch_manager.iter_batch(shuffle=True):
+                iteration += 1
+                input_x, features_vector, input_y_dict = batch
+                input_y = input_y_dict[column_name]
+                weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
+                feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
+                             text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
+                             text_cnn.iter: iteration}
+                curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
+                loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
+                if counter % 1 == 0:  # steps_check
+                    print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
+            print("going to increment epoch counter....")
+            sess.run(text_cnn.epoch_increment)
+            # valid
+            if epoch % FLAGS.validate_every == 0:
+                eval_loss, eval_accc, f1_scoree, precision, recall, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
+                print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f\tPrecision:%.3f\tRecall:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree, precision, recall))
+                # save model to checkpoint
+                if f1_scoree > best_f1_score:
+                    save_path = FLAGS.ckpt_dir + "/" + column_name + "/model.ckpt"
+                    print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
+                          ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
+                    saver.save(sess, save_path, global_step=epoch)
+                    best_acc = eval_accc
+                    best_f1_score = f1_scoree
+                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 10 or epoch == 20 or epoch == 30 or epoch == 40)):
+                    for i in range(1):  # decay learning rate if necessary.
+                        print(i, "Going to decay learning rate by half.")
+                        sess.run(text_cnn.learning_rate_decay_half_op)
+
+    def create_model(self, sess, column_name):
         text_cnn = TextCNN(self.num_classes, self.vocab_size, self.max_len)
         saver = tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir+"checkpoint"):
+        model_save_dir = FLAGS.ckpt_dir + "/" + column_name
+        if os.path.exists(model_save_dir+"checkpoint"):
             print("Restoring Variables from Checkpoint.")
-            saver.restore(sess, tf.train.latest_checkpoint(FLAGS.ckpt_dir))
+            saver.restore(sess, tf.train.latest_checkpoint(model_save_dir))
             if FLAGS.decay_lr_flag:
                 for i in range(2):  # decay learning rate if necessary.
                     print(i, "Going to decay learning rate by half.")
@@ -215,8 +225,8 @@ class Main:
         else:
             print('Initializing Variables')
             sess.run(tf.global_variables_initializer())
-            if not os.path.exists(FLAGS.ckpt_dir):
-                os.makedirs(FLAGS.ckpt_dir)
+            if not os.path.exists(model_save_dir):
+                os.makedirs(model_save_dir)
             if FLAGS.use_pretrained_embedding:  # 加载预训练的词向量
                 print("===>>>going to use pretrained word embeddings...")
                 old_emb_matrix = sess.run(text_cnn.Embedding.read_value())
@@ -227,7 +237,7 @@ class Main:
                 print("using pre-trained word emebedding.ended...")
         return text_cnn, saver
 
-    def evaluate(self, sess, text_cnn, batch_manager, iteration, colume_name):
+    def evaluate(self, sess, text_cnn, batch_manager, iteration, column_name):
         small_value = 0.00001
         # file_object = open('data/log_predict_error.txt', 'a')
         eval_loss, eval_accc, eval_counter = 0.0, 0.0, 0
@@ -235,8 +245,8 @@ class Main:
         weights_label = {}  # weight_label[label_index]=(number,correct)
         for batch in batch_manager.iter_batch(shuffle=True):
             eval_x, features_vector, eval_y_dict = batch
-            eval_y = eval_y_dict[colume_name]
-            weights = get_weights_for_current_batch(eval_y, self.label_weight_dict[colume_name])   # 根据类别权重参数更新训练集各标签的权重
+            eval_y = eval_y_dict[column_name]
+            weights = get_weights_for_current_batch(eval_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
             feed_dict = {text_cnn.input_x: eval_x, text_cnn.features_vector: features_vector, text_cnn.input_y: eval_y,
                          text_cnn.weights: weights, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
             curr_eval_loss, curr_accc, logits = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits], feed_dict)
@@ -258,4 +268,4 @@ if __name__ == "__main__":
     main.load_data()
     main.get_dict()
     main.get_data()
-    main.train()
+    main.train_control()
