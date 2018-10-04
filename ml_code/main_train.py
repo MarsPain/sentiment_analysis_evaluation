@@ -44,6 +44,7 @@ class Main:
         content_train = self.train_data_df.iloc[:, 1]
         logger.info("start seg train data")
         self.string_train = seg_words(content_train)
+        joblib.dump(self.string_train, "pkl/string_train.pkl")
         logger.info("complete seg train data")
         self.columns = self.train_data_df.columns.values.tolist()   # 获取列索引的名称
 
@@ -51,6 +52,7 @@ class Main:
         logger.info("start train feature extraction")
         self.vectorizer_tfidf = TfidfVectorizer(analyzer='word', ngram_range=(1, 5), min_df=5, norm='l2')
         self.vectorizer_tfidf.fit(self.string_train)
+        joblib.dump(self.vectorizer_tfidf, "pkl/vectorizer_tfidf.pkl")
         logger.info("complete train feature extraction models")
         # logger.info("vocab shape: %s" % np.shape(self.vectorizer_tfidf.vocabulary_.keys()))
 
