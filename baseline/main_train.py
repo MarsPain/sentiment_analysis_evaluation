@@ -1,10 +1,10 @@
 #!/user/bin/env python
 # -*- coding:utf-8 -*-
 
-from data_process import load_data_from_csv, seg_words
-from model import TextClassifier
+from baseline.data_process import load_data_from_csv, seg_words
+from baseline.model import TextClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-import config
+from baseline import config
 import logging
 import numpy as np
 from sklearn.externals import joblib
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     train_data_df = load_data_from_csv(config.train_data_path)
     validate_data_df = load_data_from_csv(config.validate_data_path)
 
-    content_train = train_data_df.iloc[:100, 1]
+    content_train = train_data_df.iloc[:1000, 1]
 
     logger.info("start seg train data")
     content_train = seg_words(content_train)
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     logger.info("start train model")
     classifier_dict = dict()
     for column in columns[2:]:
-        label_train = train_data_df[column].iloc[:100]
+        label_train = train_data_df[column].iloc[:1000]
         text_classifier = TextClassifier(vectorizer=vectorizer_tfidf)
         logger.info("start train %s model" % column)
         text_classifier.fit(content_train, label_train)

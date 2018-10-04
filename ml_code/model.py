@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 class TextClassifier:
     def __init__(self, vectorizer):
-        classifier = SVC(kernel="rbf")
-        # classifier = SVC(kernel="linear")
+        # classifier = SVC(kernel="rbf")
+        classifier = SVC(kernel="linear")
         # classifier = MultinomialNB()
         self.classifier = classifier
         self.vectorizer = vectorizer
@@ -22,10 +22,10 @@ class TextClassifier:
         return self.vectorizer.transform(x)
 
     def fit(self, x, y):
-        self.classifier.fit(self.features(x), y)
+        self.classifier.fit(x, y)
 
     def predict(self, x):
-        return self.classifier.predict(self.features(x))
+        return self.classifier.predict(x)
 
     def score(self, x, y):
         return self.classifier.score(self.features(x), y)
