@@ -16,7 +16,7 @@ class TextClassifier:
         # classifier = SVC(kernel="rbf")
         # classifier = SVC(kernel="linear")
         # classifier = MultinomialNB()
-        classifier = LogisticRegression()
+        classifier = LogisticRegression(class_weight="balanced")
         self.classifier = classifier
         self.vectorizer = vectorizer
 
