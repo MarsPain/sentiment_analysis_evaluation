@@ -3,6 +3,7 @@
 
 from sklearn.svm import SVC
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model.logistic import LogisticRegression
 from sklearn.metrics import f1_score
 import logging
 
@@ -13,8 +14,9 @@ logger = logging.getLogger(__name__)
 class TextClassifier:
     def __init__(self, vectorizer):
         # classifier = SVC(kernel="rbf")
-        classifier = SVC(kernel="linear")
+        # classifier = SVC(kernel="linear")
         # classifier = MultinomialNB()
+        classifier = LogisticRegression()
         self.classifier = classifier
         self.vectorizer = vectorizer
 
