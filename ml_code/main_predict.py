@@ -1,12 +1,12 @@
 #!/user/bin/env python
 # -*- coding:utf-8 -*-
 
-from data_utils import seg_words, load_data_from_csv
+from ml_code.data_utils import seg_words, load_data_from_csv
 import logging
-import config
+from ml_code import config
 import argparse
 from sklearn.externals import joblib
-from main_train import model_name_file
+from ml_code.main_train import models_dir
 
 test_data_path = "../data/sentiment_analysis_testa.csv"
 test_data_predict_out_path = "result.csv"
@@ -39,17 +39,15 @@ def get_data():
 
 
 def predict():
-    model_name = model_name_file
     # model_name = get_parer()
     test_data_df, content_test = get_data()
-    # load model
-    logger.info("start load model")
-    classifier_dict = joblib.load(config.model_save_path + "_" + model_name)
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    for column in columns[2:]:
-        test_data_df[column] = classifier_dict[column].predict(content_test)
+    for column in columns[2:3]:
+        text_classifier = joblib.load(models_dir + "/" + column + ".pkl")
+        logger.info("compete load %s model" % column)
+        test_data_df[column] = text_classifier.predict(content_test)
         logger.info("compete %s predict" % column)
     test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
     logger.info("compete predict test data")

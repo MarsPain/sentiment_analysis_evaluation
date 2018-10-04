@@ -13,7 +13,7 @@ import argparse
 
 train_data_path = "../data/sentiment_analysis_trainingset.csv"
 validate_data_path = "../data/sentiment_analysis_validationset.csv"
-model_name_file = "model_dict.pkl"
+models_dir = "models"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class Main:
     def __init__(self):
-        self.model_name = model_name_file # 模型名称（用于保存模型时的命名）
+        self.models_dir = models_dir  # 模型名称（用于保存模型时的命名）
         self.train_data_df = None   # 训练集
         self.validate_data_df = None    # 验证集
         self.string_train = None  # 训练集的评论（string）
@@ -33,15 +33,15 @@ class Main:
         parser = argparse.ArgumentParser()
         parser.add_argument('-mn', '--model_name', type=str, nargs='?', help='the name of model')
         args = parser.parse_args()
-        self.model_name = args.model_name
-        if not self.model_name:
-            self.model_name = "model_dict.pkl"
+        self.models_dir = args.model_name
+        if not self.models_dir:
+            self.models_dir = models_dir
 
     def get_data(self):
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(train_data_path)
         self.validate_data_df = load_data_from_csv(validate_data_path)
-        content_train = self.train_data_df.iloc[:100, 1]
+        content_train = self.train_data_df.iloc[:, 1]
         logger.info("start seg train data")
         self.string_train = seg_words(content_train)
         logger.info("complete seg train data")
@@ -57,45 +57,44 @@ class Main:
     def train(self):
         logger.info("start train model")
         self.classifier_dict = dict()
-        for column in self.columns[2:]:
-            label_train = self.train_data_df[column].iloc[:100]
+        f1_score_dict = dict()
+        for index, column in enumerate(self.columns[2:3]):
+            label_train = self.train_data_df[column].iloc[:]
             text_classifier = TextClassifier(vectorizer=self.vectorizer_tfidf)
             logger.info("start train %s model" % column)
             text_classifier.fit(self.string_train, label_train)
-            logger.info("complete train %s model" % column)
+            logger.info("complete train the %s th model: %s" % (str(index), column))
+            f1_score = self.valid(text_classifier, column)
+            f1_score_dict[column] = f1_score
+            self.save_model(text_classifier, column)
+            logger.info("complete save the %s th model: %s" % (str(index), column))
             self.classifier_dict[column] = text_classifier
         logger.info("complete train model")
-        self.valid()
-        self.save_model()
+        self.valid_all(f1_score_dict)
 
-    def valid(self):
+    def valid(self, text_classifier, model_name):
         content_validate = self.validate_data_df.iloc[:, 1]
         logger.info("start seg validate data")
         content_validate = seg_words(content_validate)
         logger.info("complete seg validate data")
         logger.info("start validate model")
-        f1_score_dict = dict()
-        for column in self.columns[2:]:
-            label_validate = self.validate_data_df[column]
-            text_classifier = self.classifier_dict[column]
-            f1_score = text_classifier.get_f1_score(content_validate, label_validate)
-            f1_score_dict[column] = f1_score
+        label_validate = self.validate_data_df[model_name]
+        f1_score = text_classifier.get_f1_score(content_validate, label_validate)
+        return f1_score
+
+    def valid_all(self, f1_score_dict):
         f1_score = np.mean(list(f1_score_dict.values()))
         str_score = "\n"
-        for column in self.columns[2:]:
+        for column in self.columns[2:3]:
             str_score = str_score + column + ":" + str(f1_score_dict[column]) + "\n"
         logger.info("f1_scores: %s\n" % str_score)
         logger.info("f1_score: %s" % f1_score)
         logger.info("complete validate model")
 
-    def save_model(self):
-        logger.info("start save model")
-        model_save_path = config.model_save_path
-        if not os.path.exists(model_save_path):
-            os.makedirs(model_save_path)
-        joblib.dump(self.classifier_dict, model_save_path + "_" + self.model_name)
-        logger.info("complete save model")
-
+    def save_model(self, text_classifier, model_name):
+        logger.info("start save %s model" % models_dir)
+        model_save_path = os.path.join(self.models_dir, model_name + ".pkl")
+        joblib.dump(text_classifier, model_save_path)
 
 if __name__ == '__main__':
     main = Main()

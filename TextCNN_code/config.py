@@ -2,7 +2,6 @@
 # -*- coding:utf-8 -*-
 
 import os
-model_save_path = os.path.abspath('..') + "/data"
 num_epochs = 10
 batch_size = 32
 tokenize_style = "word"
