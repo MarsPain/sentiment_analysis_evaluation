@@ -86,23 +86,23 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
-        content_train = self.train_data_df.iloc[:50000, 1]
-        content_valid = self.validate_data_df.iloc[:10000, 1]
+        content_train = self.train_data_df.iloc[:, 1]
+        content_valid = self.validate_data_df.iloc[:, 1]
         logger.info("start seg train data")
         self.string_train = seg_words(content_train, FLAGS.tokenize_style)  # 根据tokenize_style对评论字符串进行分词
+        print("训练集大小：", len(self.string_train))
         self.string_valid = seg_words(content_valid, FLAGS.tokenize_style)
-        # print(self.string_train[0])
         logger.info("complete seg train data")
         self.columns = self.train_data_df.columns.values.tolist()
         # print(self.columns)
         logger.info("load label data")
         self.label_train_dict = {}
         for column in self.columns[2:]:
-            label_train = list(self.train_data_df[column].iloc[:50000])
+            label_train = list(self.train_data_df[column].iloc[:])
             self.label_train_dict[column] = label_train
         self.label_valid_dict = {}
         for column in self.columns[2:]:
-            label_valid = list(self.validate_data_df[column].iloc[:10000])
+            label_valid = list(self.validate_data_df[column].iloc[:])
             self.label_valid_dict[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
@@ -177,7 +177,7 @@ class Main:
         text_cnn, saver = self.create_model(sess, column_name)
         curr_epoch = sess.run(text_cnn.epoch_step)
         iteration = 0
-        best_acc = 0.60
+        best_acc = 0.50
         best_f1_score = 0.20
         for epoch in range(curr_epoch, FLAGS.num_epochs):
             loss, eval_acc, counter = 0.0, 0.0, 0

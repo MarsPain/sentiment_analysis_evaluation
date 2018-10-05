@@ -27,6 +27,7 @@ def seg_words(contents, tokenize_style):
         for content in contents:
             content = re.sub(" ", "，", content.strip())
             # print(content)
+            content = re.sub("\n", "", content.strip())
             # print(" ".join(list(content.strip())))
             string_segs.append(" ".join(list(content.strip())))
     return string_segs
