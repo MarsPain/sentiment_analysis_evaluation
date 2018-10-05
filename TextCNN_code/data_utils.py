@@ -32,7 +32,7 @@ def seg_words(contents, tokenize_style):
     return string_segs
 
 
-def create_dict(string_train, label_list, path):
+def create_dict(string_train, label_list, path, vocab_size):
     """
     通过训练集创建字符word和label与索引index之间的双向映射字典
     :param string_train:经过分词的评论字符串列表，["" 吼吼 吼 ， 萌死 人 的 棒棒糖 ， 中 了 大众 点评 的 霸王餐"]
@@ -52,7 +52,7 @@ def create_dict(string_train, label_list, path):
     vocab_list = []  # 存储高词频的word及其相应的频数
     for string in string_train:
         c_inputs.update(string.split(" "))
-        vocab_list = c_inputs.most_common(20000)  # 参数对word数量进行限制
+        vocab_list = c_inputs.most_common(vocab_size)  # 参数对word数量进行限制
     for i, word_freq in enumerate(vocab_list):
         # print(word_freq)  # word_freq是word和相应词频的元组
         word, _ = word_freq

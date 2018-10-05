@@ -32,13 +32,15 @@ tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2ve
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for char")
 # 模型参数
+tf.app.flags.DEFINE_integer("num_classes", config.num_classes, "number of label class.")
 tf.app.flags.DEFINE_integer("num_epochs", config.num_epochs, "number of epochs to run.")
 tf.app.flags.DEFINE_integer("batch_size", config.batch_size, "Batch size for training/evaluating.")
 tf.app.flags.DEFINE_string("tokenize_style", config.tokenize_style, "tokenize sentence in char,word,or pinyin.default is char")
+tf.app.flags.DEFINE_integer("vocab_size", config.vocab_size, "size of vocab")
 tf.app.flags.DEFINE_boolean("use_pretrained_embedding", True, "whether to use embedding or not")
 tf.app.flags.DEFINE_integer("embed_size", config.embed_size, "embedding size")
 tf.app.flags.DEFINE_integer("num_filters", config.num_filters, "number of filters")  # 64
-tf.app.flags.DEFINE_integer("sentence_len", config.sentence_len, "max sentence length. length should be divide by 3,""which is used by k max pooling.")
+tf.app.flags.DEFINE_integer("max_len", config.max_len, "max sentence length. length should be divide by 3,""which is used by k max pooling.")
 tf.app.flags.DEFINE_integer("top_k", config.top_k, "value of top k for k-max polling")
 tf.app.flags.DEFINE_float("learning_rate", config.learning_rate, "learning rate")  # 0.001
 tf.app.flags.DEFINE_boolean("decay_lr_flag", True, "whether manally decay lr")
@@ -66,10 +68,7 @@ class Main:
         self.index_to_word = None   # index到字符word的映射字典
         self.label_to_index = None   # label到index的映射字典
         self.index_to_label = None  # index到label的映射字典
-        self.vocab_size = None  # 字符的词典大小
-        self.num_classes = None  # 类别标签数量
         self.label_weight_dict = None   # 存储标签权重
-        self.max_len = 50  # 设置评论序列最大长度
         self.train_batch_manager = None  # train数据batch生成类
         self.valid_batch_manager = None  # valid数据batch生成类
 
@@ -117,12 +116,8 @@ class Main:
                 self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = pickle.load(dict_f)
         else:   # 重新读取训练数据并创建各个映射字典
             self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = \
-                create_dict(self.string_train, self.label_train_dict, word_label_dict)
+                create_dict(self.string_train, self.label_train_dict, word_label_dict, FLAGS.vocab_size)
         print(len(self.word_to_index), self.word_to_index)
-        self.vocab_size = len(self.word_to_index)
-        # print(self.vocab_size)
-        self.num_classes = len(self.label_to_index)
-        # print(self.num_classes)
         logger.info("complete get dict")
 
     def get_data(self):
@@ -150,8 +145,8 @@ class Main:
             # print(self.label_train_dict["location_traffic_convenience"])
             # 打乱数据、padding,并对评论序列、特征向量、标签字典打包
             # max_sentence = get_max_len(sentences_train)  # 获取最大评论序列长度
-            train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, self.max_len)
-            valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, self.max_len)
+            train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, FLAGS.max_len)
+            valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, FLAGS.max_len)
             with open(train_valid_test, "wb") as f:
                 pickle.dump([train_data, valid_data, self.label_weight_dict], f)
         print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
@@ -219,7 +214,7 @@ class Main:
                         sess.run(text_cnn.learning_rate_decay_half_op)
 
     def create_model(self, sess, column_name):
-        text_cnn = TextCNN(self.num_classes, self.vocab_size, self.max_len)
+        text_cnn = TextCNN()
         saver = tf.train.Saver()
         model_save_dir = FLAGS.ckpt_dir + "/" + column_name
         if os.path.exists(model_save_dir+"checkpoint"):

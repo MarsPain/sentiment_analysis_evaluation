@@ -5,11 +5,11 @@ from TextCNN_code import config
 
 
 class TextCNN:
-    def __init__(self, num_classes, vocab_size, max_len):
+    def __init__(self):
         # 初始化参数
-        self.num_classes = num_classes
-        self.sequence_length = max_len
-        self.vocab_size = vocab_size
+        self.num_classes = config.num_classes
+        self.sequence_length = config.max_len
+        self.vocab_size = config.vocab_size
         self.embed_size = config.embed_size
         self.hidden_size = config.embed_size
         self.lr = config.learning_rate
