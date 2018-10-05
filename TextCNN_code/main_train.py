@@ -164,7 +164,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        for column_name in column_name_list[2:3]:
+        for column_name in column_name_list[3:4]:
             logger.info("start %s model train" % column_name)
             tf_config = tf.ConfigProto()
             tf_config.gpu_options.allow_growth = True
