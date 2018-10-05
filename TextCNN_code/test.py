@@ -1,5 +1,6 @@
 import numpy as np
 import re
+import pandas as pd
 
 
 # s = "sadasdas  dsadas d dasd dsa  dsa"
@@ -24,3 +25,9 @@ import re
 # print(d_sort)
 # word_list_sort = [v[0] for i, v in enumerate(d_sort)]
 # print(word_list_sort)
+
+# df = pd.DataFrame([[1, 2, 3, 4], [1, 2, 3, 4]])
+# print(df)
+# l = ["a", "b"]
+# df[1] = l
+# print(df)
