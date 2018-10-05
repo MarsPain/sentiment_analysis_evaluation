@@ -87,8 +87,8 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
-        content_train = self.train_data_df.iloc[:100, 1]
-        content_valid = self.validate_data_df.iloc[:100, 1]
+        content_train = self.train_data_df.iloc[:, 1]
+        content_valid = self.validate_data_df.iloc[:, 1]
         logger.info("start seg train data")
         self.string_train = seg_words(content_train, FLAGS.tokenize_style)  # 根据tokenize_style对评论字符串进行分词
         self.string_valid = seg_words(content_valid, FLAGS.tokenize_style)
@@ -108,6 +108,7 @@ class Main:
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
     def get_dict(self):
+        logger.info("start get dict")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
         word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict.pkl")    # 存储word和label与index之间的双向映射字典
@@ -122,8 +123,10 @@ class Main:
         # print(self.vocab_size)
         self.num_classes = len(self.label_to_index)
         # print(self.num_classes)
+        logger.info("complete get dict")
 
     def get_data(self):
+        logger.info("start get data")
         train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
@@ -156,6 +159,7 @@ class Main:
         self.train_batch_manager = BatchManager(train_data, int(FLAGS.batch_size))
         print("训练集批次数量：", self.train_batch_manager.len_data)
         self.valid_batch_manager = BatchManager(valid_data, int(FLAGS.batch_size))
+        logger.info("complete get data")
 
     def train_control(self):
         """
@@ -163,12 +167,16 @@ class Main:
         模型文件夹以评价对象进行命名
         :return:
         """
+        logger.info("start train")
         column_name_list = self.columns
         for column_name in column_name_list[2:3]:
+            logger.info("start %s model train" % column_name)
             tf_config = tf.ConfigProto()
             tf_config.gpu_options.allow_growth = True
             with tf.Session(config=tf_config) as sess:
                 self.train(sess, column_name)
+            logger.info("complete %s model train" % column_name)
+        logger.info("complete all models' train")
 
     def train(self, sess, column_name):
         text_cnn, saver = self.create_model(sess, column_name)

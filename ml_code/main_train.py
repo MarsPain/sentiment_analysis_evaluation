@@ -47,7 +47,7 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(train_data_path)
         self.validate_data_df = load_data_from_csv(validate_data_path)
-        content_train = self.train_data_df.iloc[:2000, 1]    # 训练集评论语句
+        content_train = self.train_data_df.iloc[:1000, 1]    # 训练集评论语句
         logger.info("start seg train data")
         if not os.path.exists("pkl/string_train.pkl"):
             self.string_train = seg_words(content_train)
@@ -91,7 +91,7 @@ class Main:
         self.classifier_dict = dict()
         f1_score_dict = dict()
         for index, column in enumerate(self.columns[2:3]):
-            label_train = self.train_data_df[column].iloc[:2000]
+            label_train = self.train_data_df[column].iloc[:1000]
             text_classifier = TextClassifier(vectorizer=self.vectorizer_tfidf)
             logger.info("start train %s model" % column)
             text_classifier.fit(self.train_data, label_train)
