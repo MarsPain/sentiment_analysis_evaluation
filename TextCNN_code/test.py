@@ -15,3 +15,11 @@ import numpy as np
 # print(a.shape)
 # a = np.asarray([[[1],[2],[3]],[[4],[5],[6]],[[7],[8],[10]]])
 # print(a.shape)
+
+# 测试字典的排序
+# d = {"a": 5, "b": 4, "我": 7}
+# print(d)
+# d_sort = sorted(d.items(), key=lambda x: x[1])
+# print(d_sort)
+# word_list_sort = [v[0] for i, v in enumerate(d_sort)]
+# print(word_list_sort)

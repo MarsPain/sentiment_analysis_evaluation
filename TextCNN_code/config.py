@@ -3,14 +3,14 @@
 
 import os
 num_classes = 4
-num_epochs = 10
+num_epochs = 50
 batch_size = 32
 vocab_size = 20000
 tokenize_style = "word"
 embed_size = 100
 filter_sizes = [3, 4, 5]
 num_filters = 64
-max_len = 50   # 必须是top_k的倍数
+max_len = 500   # 必须是top_k的倍数
 top_k = 1
 learning_rate = 0.001
 clip_gradients = 3.0

@@ -22,19 +22,23 @@ def get_tfidf_and_save(data, tfidf_path):
     vectorizer_tfidf.fit(data)
     train_vector_tfidf = vectorizer_tfidf.transform(data)
     # print("train_vector_tfidf", train_vector_tfidf[0])
-    tfidf_values_list = train_vector_tfidf.toarray()    # 保存所有句子所包含词汇的tfidf值的稀疏矩阵（失去了原有的句子的顺序）
-    # print("tfidf_values_list:", len(tfidf_values_list[0]), tfidf_values_list[0], sum(tfidf_values_list[0]))
-    word_list = vectorizer_tfidf.get_feature_names()    # 所有被赋tfidf值的单词列表
+    word_dict = vectorizer_tfidf.vocabulary_
+    word_dict_sorted = sorted(word_dict.items(), key=lambda x: x[1])
+    word_list_sort = [v[0] for i, v in enumerate(word_dict_sorted)]
     # print("word_list:", word_list)
     word_to_tfidf = {}  # 存储word到tfidf的映射字典
-    # for i in range(len(tfidf_values_list)):
-    for i in range(len(tfidf_values_list)):
-        for j in range(len(word_list)):
-            tfidf_value = tfidf_values_list[i][j]
-            # print(word_list[j], float(tfidf_value))
-            if float(tfidf_value) != 0.0:
-                # print("YES")
-                word_to_tfidf[word_list[j]] = tfidf_value
+    tfidf_values_list = []
+    for i in range(1, 11):
+        tfidf_values_list = train_vector_tfidf[(i-1)*5000: i*5000].toarray()    # 得到保存所有句子所包含词汇的tfidf值的稀疏矩阵（失去了原有的句子的顺序）
+        print("tfidf_values_list:", len(tfidf_values_list), len(tfidf_values_list[0]))
+        # print("tfidf_values_list:", len(tfidf_values_list[0]), tfidf_values_list[0], sum(tfidf_values_list[0]))
+        for j in range(len(tfidf_values_list)):
+            for k in range(len(word_list_sort)):
+                tfidf_value = tfidf_values_list[j][k]
+                # print(word_list[j], float(tfidf_value))
+                if float(tfidf_value) != 0.0:
+                    # print("YES")
+                    word_to_tfidf[word_list_sort[k]] = tfidf_value
     with open(tfidf_path, "w", encoding="utf-8") as f:
         for word, tfidf_score in word_to_tfidf.items():
             f.write(word+"|||"+str(tfidf_score)+"\n")
