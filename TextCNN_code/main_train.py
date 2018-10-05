@@ -186,6 +186,7 @@ class Main:
                 iteration += 1
                 input_x, features_vector, input_y_dict = batch
                 input_y = input_y_dict[column_name]
+                # print("input_y:", input_y)
                 weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
                 feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
                              text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
@@ -208,7 +209,7 @@ class Main:
                     saver.save(sess, save_path, global_step=epoch)
                     best_acc = eval_accc
                     best_f1_score = f1_scoree
-                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 10 or epoch == 20 or epoch == 30 or epoch == 40)):
+                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 8)):
                     for i in range(1):  # decay learning rate if necessary.
                         print(i, "Going to decay learning rate by half.")
                         sess.run(text_cnn.learning_rate_decay_half_op)

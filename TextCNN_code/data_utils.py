@@ -39,6 +39,7 @@ def create_dict(string_train, label_list, path, vocab_size):
     :param string_train:经过分词的评论字符串列表，["" 吼吼 吼 ， 萌死 人 的 棒棒糖 ， 中 了 大众 点评 的 霸王餐"]
     :param label_list:用于保存各个评价对象的标签列表的字典
     :param path:存储生成的映射字典的路径
+    :param vocab_size: word到index的映射字典的大小
     :return:四个dict:word和label与索引index之间的双向映射字典
     """
     word_to_index = {}
@@ -215,11 +216,11 @@ def get_weights_for_current_batch(answer_list, weights_dict):
     weights_list_batch = list(np.ones((len(answer_list))))
     answer_list = list(answer_list)
     for i, label in enumerate(answer_list):
-        if label == 1:
+        if label == 0:
             weights_list_batch[i] = weights_dict[0]
-        elif label == 0:
+        elif label == 1:
             weights_list_batch[i] = weights_dict[1]
-        elif label == -1:
+        elif label == 2:
             weights_list_batch[i] = weights_dict[2]
         else:
             weights_list_batch[i] = weights_dict[3]
@@ -228,23 +229,23 @@ def get_weights_for_current_batch(answer_list, weights_dict):
 
 def compute_confuse_matrix(logit, label):
     length = len(label)
-    true_positive = 0  # TP:if label is true('0/2/3'), and predict is true('0/2/3')
-    false_positive = 0  # FP:if label is false('1'),but predict is ture('0/2/3')
-    true_negative = 0  # TN:if label is false('0'),and predict is false('0')
-    false_negative = 0  # FN:if label is false('0/2/3'),but predict is true('1')
+    true_positive = 0  # TP:if label is true('0'), and predict is true('0') 0 0
+    false_positive = 0  # FP:if label is false('1,2,3'),but predict is ture('0')    1,2,3     0
+    true_negative = 0  # TN:if label is false('1,2,3'),and predict is false('1,2,3')    1,2,3    1, 2, 3
+    false_negative = 0  # FN:if label is true('0'),but predict is false('1,2,3')    0    1, 2, 3
     for i in range(length):
         predict = np.argmax(logit[i])
         # print(predict, label[i])
-        if (predict == 0 and label[i] == 0) or (predict == 2 and label[i] == 2) or \
-                (predict == 3 and label[i] == 3):
+        if label[i] == 0 and predict == 0:
             true_positive += 1
-        elif predict == 1 and (label[i] == 0 or label[i] == 2 or label[i] == 3):
+        elif (label[i] == 1 or label[i] == 2 or label[i] == 3) and predict == 0:
             # print("yes")
             false_positive += 1
-        elif predict == 0 and label[i] == 0:
+        # elif (predict == 1 or predict == 2 or predict == 3) and (label[i] == 1 or label[i] == 2 or label[i] == 3):
+        elif (label[i] == 1 and predict == 1) or (label[i] == 2 and predict == 2) or (label[i] == 3 and predict == 3):
             # print("yes")
             true_negative += 1
-        elif (predict == 0 or label[i] == 2 or label[i] == 3) and label[i] == 1:
+        elif label[i] == 0 and (predict == 1 or predict == 2 or predict == 3):
             # print("yes")
             false_negative += 1
         # elif predict == 3 and label[i] == 0:

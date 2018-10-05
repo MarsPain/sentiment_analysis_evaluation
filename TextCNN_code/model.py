@@ -9,7 +9,7 @@ class TextCNN:
         # 初始化参数
         self.num_classes = config.num_classes
         self.sequence_length = config.max_len
-        self.vocab_size = config.vocab_size
+        self.vocab_size = config.vocab_size + 2
         self.embed_size = config.embed_size
         self.hidden_size = config.embed_size
         self.lr = config.learning_rate
