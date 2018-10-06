@@ -31,3 +31,9 @@ import pandas as pd
 # l = ["a", "b"]
 # df[1] = l
 # print(df)
+
+# 测试权重参数
+# y = [1, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+# value = np.bincount(y)
+# print(type(value), value)
+# print(10 / (2 * value))

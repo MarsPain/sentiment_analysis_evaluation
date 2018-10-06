@@ -147,6 +147,7 @@ def predict():
             logger.info("compete load %s model and start predict" % column)
             for batch in test_batch_manager.iter_batch(shuffle=True):
                 test_x, features_vector = batch
+                # print(len(test_x[0]), test_x[0])
                 feed_dict = {text_cnn.input_x: test_x, text_cnn.features_vector: features_vector,
                              text_cnn.dropout_keep_prob: 1.0}
                 predictions = sess.run([text_cnn.predictions], feed_dict)
