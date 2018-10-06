@@ -166,7 +166,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        for column_name in column_name_list[2:3]:
+        for column_name in column_name_list[3:4]:
             logger.info("start %s model train" % column_name)
             tf_config = tf.ConfigProto()
             tf_config.gpu_options.allow_growth = True
@@ -212,7 +212,7 @@ class Main:
                     saver.save(sess, save_path, global_step=epoch)
                     best_acc = eval_accc
                     best_f1_score = f1_scoree
-                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 4)):
+                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 14 or epoch == 18)):
                     for i in range(1):  # decay learning rate if necessary.
                         print(i, "Going to decay learning rate by half.")
                         sess.run(text_cnn.learning_rate_decay_half_op)

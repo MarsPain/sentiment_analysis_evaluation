@@ -162,7 +162,7 @@ def predict():
             # print(predictions_all)
             test_data_df[column] = predictions_all
         logger.info("compete %s predict" % column)
-    test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
+    # test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
     logger.info("compete predict test data")
 
 if __name__ == '__main__':
