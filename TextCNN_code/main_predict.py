@@ -19,8 +19,8 @@ UNK_ID = 1
 _PAD = "_PAD"
 _UNK = "UNK"
 
-# test_data_path = "../data/sentiment_analysis_testa.csv"
-test_data_path = "../data/sentiment_analysis_validationset.csv"
+test_data_path = "../data/sentiment_analysis_testa.csv"
+# test_data_path = "../data/sentiment_analysis_validationset.csv"
 # test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
