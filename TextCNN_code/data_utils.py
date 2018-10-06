@@ -227,28 +227,60 @@ def get_weights_for_current_batch(answer_list, weights_dict):
     return weights_list_batch
 
 
-def compute_confuse_matrix(logit, label):
+def compute_confuse_matrix(logit, label, small_value):
     length = len(label)
-    true_positive = 0  # TP:if label is true('0'), and predict is true('0') 0 0
-    false_positive = 0  # FP:if label is false('1,2,3'),but predict is ture('0')    1,2,3     0
-    true_negative = 0  # TN:if label is false('1,2,3'),and predict is false('1,2,3')    1,2,3    1, 2, 3
-    false_negative = 0  # FN:if label is true('0'),but predict is false('1,2,3')    0    1, 2, 3
+    true_positive_0 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_0 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_0 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_1 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_1 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_1 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_2 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_2 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_2 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_3 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_3 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_3 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
     for i in range(length):
         predict = np.argmax(logit[i])
-        # print(predict, label[i])
+        # 用于计算0的精确率和召回率
         if label[i] == 0 and predict == 0:
-            true_positive += 1
+            true_positive_0 += 1
         elif (label[i] == 1 or label[i] == 2 or label[i] == 3) and predict == 0:
-            # print("yes")
-            false_positive += 1
-        # elif (predict == 1 or predict == 2 or predict == 3) and (label[i] == 1 or label[i] == 2 or label[i] == 3):
-        elif (label[i] == 1 and predict == 1) or (label[i] == 2 and predict == 2) or (label[i] == 3 and predict == 3):
-            # print("yes")
-            true_negative += 1
+            false_positive_0 += 1
         elif label[i] == 0 and (predict == 1 or predict == 2 or predict == 3):
-            # print("yes")
-            false_negative += 1
-        # elif predict == 3 and label[i] == 0:
-        #     pass
-            # print("yes!!!!!!")
-    return true_positive, false_positive, true_negative, false_negative
+            false_negative_0 += 1
+        # 用于计算1的精确率和召回率
+        if label[i] == 1 and predict == 1:
+            true_positive_1 += 1
+        elif (label[i] == 0 or label[i] == 2 or label[i] == 3) and predict == 1:
+            false_positive_1 += 1
+        elif label[i] == 1 and (predict == 0 or predict == 2 or predict == 3):
+            false_negative_1 += 1
+        # 用于计算2的精确率和召回率
+        if label[i] == 2 and predict == 2:
+            true_positive_2 += 1
+        elif (label[i] == 0 or label[i] == 1 or label[i] == 3) and predict == 2:
+            false_positive_2 += 1
+        elif label[i] == 2 and (predict == 0 or predict == 1 or predict == 3):
+            false_negative_2 += 1
+        # 用于计算3的精确率和召回率
+        if label[i] == 3 and predict == 3:
+            true_positive_3 += 1
+        elif (label[i] == 0 or label[i] == 1 or label[i] == 2) and predict == 3:
+            false_positive_3 += 1
+        elif label[i] == 3 and (predict == 0 or predict == 1 or predict == 2):
+            false_negative_3 += 1
+    p_0 = float(true_positive_0)/float(true_positive_0+false_positive_0+small_value)
+    r_0 = float(true_positive_0)/float(true_positive_0+false_negative_0+small_value)
+    f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
+    p_1 = float(true_positive_1)/float(true_positive_1+false_positive_1+small_value)
+    r_1 = float(true_positive_1)/float(true_positive_1+false_negative_1+small_value)
+    f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
+    p_2 = float(true_positive_2)/float(true_positive_2+false_positive_2+small_value)
+    r_2 = float(true_positive_2)/float(true_positive_2+false_negative_2+small_value)
+    f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
+    p_3 = float(true_positive_3)/float(true_positive_3+false_positive_3+small_value)
+    r_3 = float(true_positive_3)/float(true_positive_3+false_negative_3+small_value)
+    f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
+    return f_0, f_1, f_2, f_3

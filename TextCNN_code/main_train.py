@@ -164,7 +164,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        for column_name in column_name_list[21:22]:
+        for column_name in column_name_list[2:3]:
             logger.info("start %s model train" % column_name)
             tf_config = tf.ConfigProto()
             tf_config.gpu_options.allow_growth = True
@@ -199,8 +199,9 @@ class Main:
             sess.run(text_cnn.epoch_increment)
             # valid
             if epoch % FLAGS.validate_every == 0:
-                eval_loss, eval_accc, f1_scoree, precision, recall, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
-                print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f\tPrecision:%.3f\tRecall:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree, precision, recall))
+                eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
+                print("【Validation】Epoch %d\t f_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f" % (epoch, f_0, f_1, f_2, f_3))
+                print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
                 # save model to checkpoint
                 if f1_scoree > best_f1_score:
                     save_path = FLAGS.ckpt_dir + "/" + column_name + "/model.ckpt"
@@ -244,7 +245,7 @@ class Main:
         small_value = 0.00001
         # file_object = open('data/log_predict_error.txt', 'a')
         eval_loss, eval_accc, eval_counter = 0.0, 0.0, 0
-        eval_true_positive, eval_false_positive, eval_true_negative, eval_false_negative = 0, 0, 0, 0
+        f_0, f_1, f_2, f_3 = 0, 0, 0, 0
         weights_label = {}  # weight_label[label_index]=(number,correct)
         for batch in batch_manager.iter_batch(shuffle=True):
             eval_x, features_vector, eval_y_dict = batch
@@ -253,17 +254,11 @@ class Main:
             feed_dict = {text_cnn.input_x: eval_x, text_cnn.features_vector: features_vector, text_cnn.input_y: eval_y,
                          text_cnn.weights: weights, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
             curr_eval_loss, curr_accc, logits = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits], feed_dict)
-            true_positive, false_positive, true_negative, false_negative = compute_confuse_matrix(logits, eval_y)
+            f_0, f_1, f_2, f_3 = compute_confuse_matrix(logits, eval_y, small_value)
             # write_predict_error_to_file(file_object, logits, eval_y, self.index_to_word, eval_x1, eval_x2)    # 获取被错误分类的样本（后期再添加）
             eval_loss, eval_accc, eval_counter = eval_loss+curr_eval_loss, eval_accc+curr_accc, eval_counter+1
-            eval_true_positive, eval_false_positive = eval_true_positive+true_positive, eval_false_positive+false_positive
-            eval_true_negative, eval_false_negative = eval_true_negative+true_negative, eval_false_negative+false_negative
-        print("true_positive:", eval_true_positive, ";false_positive:", eval_false_positive, ";true_negative:", eval_true_negative, ";false_negative:", eval_false_negative)
-        p = float(eval_true_positive)/float(eval_true_positive+eval_false_positive+small_value)
-        r = float(eval_true_positive)/float(eval_true_positive+eval_false_negative+small_value)
-        f1_score = (2*p*r)/(p+r+small_value)
-        print("eval_counter:", eval_counter, ";eval_acc:", eval_accc)
-        return eval_loss/float(eval_counter), eval_accc/float(eval_counter), f1_score, p, r, weights_label
+        f1_score = (f_0 + f_1 + f_2 + f_3) / 4
+        return eval_loss/float(eval_counter), eval_accc/float(eval_counter), f1_score, f_0, f_1, f_2, f_3, weights_label
 
 if __name__ == "__main__":
     main = Main()
