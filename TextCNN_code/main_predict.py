@@ -136,7 +136,7 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    for column in columns[2:3]:
+    for column in columns[21:22]:
         model_path = os.path.join(models_dir, column)
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
