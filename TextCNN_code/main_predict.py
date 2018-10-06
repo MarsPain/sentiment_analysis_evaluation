@@ -18,7 +18,8 @@ UNK_ID = 1
 _PAD = "_PAD"
 _UNK = "UNK"
 
-test_data_path = "../data/sentiment_analysis_testa.csv"
+# test_data_path = "../data/sentiment_analysis_testa.csv"
+test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
 models_dir = "ckpt"
@@ -59,7 +60,7 @@ def get_data():
     print(len(test_data[0]), len(test_data[1]))
     test_batch_manager = BatchManager(test_data, int(config.batch_size))
     logger.info("complete load data")
-    return test_data_df, test_batch_manager, index_to_word
+    return test_data_df, test_batch_manager, index_to_word, index_to_label
 
 
 def sentence_word_to_index(string, word_to_index):
@@ -131,7 +132,7 @@ def create_model(sess, index_to_word):
 
 def predict():
     # model_name = get_parer()
-    test_data_df, test_batch_manager, index_to_word = get_data()
+    test_data_df, test_batch_manager, index_to_word, index_to_label = get_data()
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
@@ -140,7 +141,7 @@ def predict():
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
         with tf.Session(config=tf_config) as sess:
-            logits_list = []
+            predictions_all = []
             text_cnn, saver = create_model(sess, index_to_word)
             saver.restore(sess, tf.train.latest_checkpoint(model_path))
             logger.info("compete load %s model and start predict" % column)
@@ -151,9 +152,14 @@ def predict():
                 predictions = sess.run([text_cnn.predictions], feed_dict)
                 predictions_list = list(predictions[0])
                 # print(predictions_list)
-                logits_list.extend(predictions_list)
-            print(len(logits_list))
-            test_data_df[column] = logits_list
+                predictions_all.extend(predictions_list)
+            # print(len(predictions_all))
+            # 将predictions映射到label，预测得到的是index。
+            logger.info("start transfer index to label")
+            for i in range(len(predictions_all)):
+                predictions_all[i] = index_to_label[predictions_all[i]]
+            # print(predictions_all)
+            test_data_df[column] = predictions_all
         logger.info("compete %s predict" % column)
     test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
     logger.info("compete predict test data")
