@@ -2,13 +2,14 @@ from TextCNN_code import config
 import logging
 from sklearn.externals import joblib
 import pickle
+import numpy as np
 import os
 import tensorflow as tf
 import math
 import random
 from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
     shuffle_padding, get_vector_tfidf, get_max_len,\
-    get_weights_for_current_batch, compute_confuse_matrix
+    get_weights_for_current_batch
 from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code.model import TextCNN
@@ -19,7 +20,8 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 # test_data_path = "../data/sentiment_analysis_testa.csv"
-test_data_path = "result.csv"
+test_data_path = "../data/sentiment_analysis_validationset.csv"
+# test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
 models_dir = "ckpt"
@@ -60,7 +62,7 @@ def get_data():
     print(len(test_data[0]), len(test_data[1]))
     test_batch_manager = BatchManager(test_data, int(config.batch_size))
     logger.info("complete load data")
-    return test_data_df, test_batch_manager, index_to_word, index_to_label
+    return test_data_df, test_batch_manager, index_to_word, index_to_label, label_to_index
 
 
 def sentence_word_to_index(string, word_to_index):
@@ -132,11 +134,11 @@ def create_model(sess, index_to_word):
 
 def predict():
     # model_name = get_parer()
-    test_data_df, test_batch_manager, index_to_word, index_to_label = get_data()
+    test_data_df, test_batch_manager, index_to_word, index_to_label, label_to_index = get_data()
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    for column in columns[21:22]:
+    for column in columns[2:3]:
         model_path = os.path.join(models_dir, column)
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
@@ -145,17 +147,16 @@ def predict():
             text_cnn, saver = create_model(sess, index_to_word)
             saver.restore(sess, tf.train.latest_checkpoint(model_path))
             logger.info("compete load %s model and start predict" % column)
-            for batch in test_batch_manager.iter_batch(shuffle=True):
+            for batch in test_batch_manager.iter_batch(shuffle=False):
                 test_x, features_vector = batch
                 # print(len(test_x[0]), test_x[0])
                 feed_dict = {text_cnn.input_x: test_x, text_cnn.features_vector: features_vector,
                              text_cnn.dropout_keep_prob: 1.0}
                 predictions = sess.run([text_cnn.predictions], feed_dict)
-                predictions_list = list(predictions[0])
-                # print(predictions_list)
-                predictions_all.extend(predictions_list)
-            # print(len(predictions_all))
-            # 将predictions映射到label，预测得到的是index。
+                # print("logits:", logits[0])
+                predictions_all.extend(list(predictions[0]))
+            # test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
+            # 将predictions映射到label，预测得到的是label的index。
             logger.info("start transfer index to label")
             for i in range(len(predictions_all)):
                 predictions_all[i] = index_to_label[predictions_all[i]]
@@ -164,6 +165,84 @@ def predict():
         logger.info("compete %s predict" % column)
     # test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
     logger.info("compete predict test data")
+
+
+def test_f_score_in_valid_data(predictions_all, columns, label_to_index):
+    validate_data_df = load_data_from_csv(test_data_path)
+    label_valid_dict = {}
+    for column in columns[2:]:
+        label_valid = list(validate_data_df[column].iloc[:])
+        label_valid_dict[column] = label_valid
+    label_valid = label_valid_dict[columns[2]]
+    for i in range(len(predictions_all)):
+        label_valid[i] = label_to_index[label_valid[i]]
+    # print("predictions_all:", len(predictions_all), predictions_all)
+    # print("label_valid:", len(label_valid), label_valid)
+    f_0, f_1, f_2, f_3 = compute_confuse_matrix(predictions_all, label_valid, 0.00001)
+    print("f_0, f_1, f_2, f_3:", f_0, f_1, f_2, f_3)
+    print("f1_score:", (f_0 + f_1 + f_2 + f_3) / 4)
+
+
+def compute_confuse_matrix(predictions_all, label, small_value):
+    length = len(label)
+    true_positive_0 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_0 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_0 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_1 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_1 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_1 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_2 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_2 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_2 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_3 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_3 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_3 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    for i in range(length):
+        # 用于计算0的精确率和召回率
+        if label[i] == 0 and predictions_all[i] == 0:
+            true_positive_0 += 1
+        elif (label[i] == 1 or label[i] == 2 or label[i] == 3) and predictions_all[i] == 0:
+            false_positive_0 += 1
+        elif label[i] == 0 and (predictions_all[i] == 1 or predictions_all[i] == 2 or predictions_all == 3):
+            false_negative_0 += 1
+        # 用于计算1的精确率和召回率
+        if label[i] == 1 and predictions_all[i] == 1:
+            true_positive_1 += 1
+        elif (label[i] == 0 or label[i] == 2 or label[i] == 3) and predictions_all[i] == 1:
+            false_positive_1 += 1
+        elif label[i] == 1 and (predictions_all[i] == 0 or predictions_all[i] == 2 or predictions_all[i] == 3):
+            false_negative_1 += 1
+        # 用于计算2的精确率和召回率
+        if label[i] == 2 and predictions_all[i] == 2:
+            true_positive_2 += 1
+        elif (label[i] == 0 or label[i] == 1 or label[i] == 3) and predictions_all[i] == 2:
+            false_positive_2 += 1
+        elif label[i] == 2 and (predictions_all[i] == 0 or predictions_all[i] == 1 or predictions_all[i] == 3):
+            false_negative_2 += 1
+        # 用于计算3的精确率和召回率
+        if label[i] == 3 and predictions_all[i] == 3:
+            true_positive_3 += 1
+        elif (label[i] == 0 or label[i] == 1 or label[i] == 2) and predictions_all[i] == 3:
+            false_positive_3 += 1
+        elif label[i] == 3 and (predictions_all[i] == 0 or predictions_all[i] == 1 or predictions_all[i] == 2):
+            false_negative_3 += 1
+    # print("标签0的预测情况：", true_positive_0, false_positive_0, false_negative_0)
+    p_0 = float(true_positive_0)/float(true_positive_0+false_positive_0+small_value)
+    r_0 = float(true_positive_0)/float(true_positive_0+false_negative_0+small_value)
+    f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
+    # print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1)
+    p_1 = float(true_positive_1)/float(true_positive_1+false_positive_1+small_value)
+    r_1 = float(true_positive_1)/float(true_positive_1+false_negative_1+small_value)
+    f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
+    # print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2)
+    p_2 = float(true_positive_2)/float(true_positive_2+false_positive_2+small_value)
+    r_2 = float(true_positive_2)/float(true_positive_2+false_negative_2+small_value)
+    f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
+    # print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3)
+    p_3 = float(true_positive_3)/float(true_positive_3+false_positive_3+small_value)
+    r_3 = float(true_positive_3)/float(true_positive_3+false_negative_3+small_value)
+    f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
+    return f_0, f_1, f_2, f_3
 
 if __name__ == '__main__':
     predict()

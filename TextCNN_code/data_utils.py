@@ -294,20 +294,5 @@ def compute_confuse_matrix(logit, label, small_value):
             false_positive_3 += 1
         elif label[i] == 3 and (predict == 0 or predict == 1 or predict == 2):
             false_negative_3 += 1
-    # print("标签0的预测情况：", true_positive_0, false_positive_0, false_negative_0)
-    p_0 = float(true_positive_0)/float(true_positive_0+false_positive_0+small_value)
-    r_0 = float(true_positive_0)/float(true_positive_0+false_negative_0+small_value)
-    f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
-    # print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1)
-    p_1 = float(true_positive_1)/float(true_positive_1+false_positive_1+small_value)
-    r_1 = float(true_positive_1)/float(true_positive_1+false_negative_1+small_value)
-    f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
-    # print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2)
-    p_2 = float(true_positive_2)/float(true_positive_2+false_positive_2+small_value)
-    r_2 = float(true_positive_2)/float(true_positive_2+false_negative_2+small_value)
-    f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
-    # print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3)
-    p_3 = float(true_positive_3)/float(true_positive_3+false_positive_3+small_value)
-    r_3 = float(true_positive_3)/float(true_positive_3+false_negative_3+small_value)
-    f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
-    return f_0, f_1, f_2, f_3
+    return true_positive_0, false_positive_0, false_negative_0, true_positive_1, false_positive_1, false_negative_1,\
+           true_positive_2, false_positive_2, false_negative_2, true_positive_3, false_positive_3, false_negative_3

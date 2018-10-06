@@ -166,7 +166,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        for column_name in column_name_list[3:4]:
+        for column_name in column_name_list[2:3]:
             logger.info("start %s model train" % column_name)
             tf_config = tf.ConfigProto()
             tf_config.gpu_options.allow_growth = True
@@ -247,7 +247,8 @@ class Main:
         small_value = 0.00001
         # file_object = open('data/log_predict_error.txt', 'a')
         eval_loss, eval_accc, eval_counter = 0.0, 0.0, 0
-        f_0, f_1, f_2, f_3 = 0, 0, 0, 0
+        true_positive_0_all, false_positive_0_all, false_negative_0_all, true_positive_1_all, false_positive_1_all, false_negative_1_all,\
+        true_positive_2_all, false_positive_2_all, false_negative_2_all, true_positive_3_all, false_positive_3_all, false_negative_3_all = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         weights_label = {}  # weight_label[label_index]=(number,correct)
         for batch in batch_manager.iter_batch(shuffle=True):
             eval_x, features_vector, eval_y_dict = batch
@@ -256,9 +257,38 @@ class Main:
             feed_dict = {text_cnn.input_x: eval_x, text_cnn.features_vector: features_vector, text_cnn.input_y: eval_y,
                          text_cnn.weights: weights, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
             curr_eval_loss, curr_accc, logits = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits], feed_dict)
-            f_0, f_1, f_2, f_3 = compute_confuse_matrix(logits, eval_y, small_value)
-            # write_predict_error_to_file(file_object, logits, eval_y, self.index_to_word, eval_x1, eval_x2)    # 获取被错误分类的样本（后期再添加）
+            true_positive_0, false_positive_0, false_negative_0, true_positive_1, false_positive_1, false_negative_1,\
+            true_positive_2, false_positive_2, false_negative_2, true_positive_3, false_positive_3, false_negative_3 = compute_confuse_matrix(logits, eval_y, small_value)
+            true_positive_0_all += true_positive_0
+            false_positive_0_all += false_positive_0
+            false_negative_0_all += false_negative_0
+            true_positive_1_all += true_positive_1
+            false_positive_1_all += false_positive_1
+            false_negative_1_all += false_negative_1
+            true_positive_2_all += true_positive_2
+            false_positive_2_all += false_positive_2
+            false_negative_2_all += false_negative_2
+            true_positive_3_all += true_positive_3
+            false_positive_3_all += false_positive_3
+            false_negative_3_all += false_negative_3
+            # write_predict_error_to_file(file_object, logits, eval_y, self.index_to_word, eval_x1, eval_x2)    # 获取被错误分类的样本（后期再处理）
             eval_loss, eval_accc, eval_counter = eval_loss+curr_eval_loss, eval_accc+curr_accc, eval_counter+1
+        # print("标签0的预测情况：", true_positive_0, false_positive_0, false_negative_0)
+        p_0 = float(true_positive_0_all)/float(true_positive_0_all+false_positive_0_all+small_value)
+        r_0 = float(true_positive_0_all)/float(true_positive_0_all+false_negative_0_all+small_value)
+        f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
+        # print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1)
+        p_1 = float(true_positive_1_all)/float(true_positive_1_all+false_positive_1_all+small_value)
+        r_1 = float(true_positive_1_all)/float(true_positive_1_all+false_negative_1_all+small_value)
+        f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
+        # print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2)
+        p_2 = float(true_positive_2_all)/float(true_positive_2_all+false_positive_2_all+small_value)
+        r_2 = float(true_positive_2_all)/float(true_positive_2_all+false_negative_2_all+small_value)
+        f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
+        # print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3)
+        p_3 = float(true_positive_3_all)/float(true_positive_3_all+false_positive_3_all+small_value)
+        r_3 = float(true_positive_3_all)/float(true_positive_3_all+false_negative_3_all+small_value)
+        f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
         f1_score = (f_0 + f_1 + f_2 + f_3) / 4
         return eval_loss/float(eval_counter), eval_accc/float(eval_counter), f1_score, f_0, f_1, f_2, f_3, weights_label
 
