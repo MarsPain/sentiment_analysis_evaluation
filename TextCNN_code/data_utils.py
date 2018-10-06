@@ -79,43 +79,43 @@ def get_vector_tfidf(string, tfidf_dict):
     return vector_tfidf_list
 
 
-def get_label_pert(train_data_df, columns):
-    len_data = train_data_df.shape[0]
-    label_pert_dict = {}
-    for column in columns[2:]:
-        label_list = list(train_data_df[column])
-        label_1_true = 0
-        label_0 = 0
-        label_1_false = 0
-        label_2 = 0
-        for label in label_list:
-            if label == 1:
-                label_1_true += 1
-            elif label == -1:
-                label_1_false += 1
-            elif label == -2:
-                label_2 += 1
-            else:
-                label_0 += 1
-        label_1_true_pert = label_1_true/len_data
-        label_1_false_pert = label_1_false/len_data
-        label_2_pert = label_2/len_data
-        label_0_pert = label_0/len_data
-        # print("label_pert(1:0:-1:-2):", column, label_1_true_pert, label_0_pert, label_1_false_pert,
-        #       label_2_pert)
-        label_pert_dict[column] = [label_1_true_pert, label_0_pert, label_1_false_pert, label_2_pert]
-    return label_pert_dict
+# def get_label_pert(train_data_df, columns):
+#     len_data = train_data_df.shape[0]
+#     label_pert_dict = {}
+#     for column in columns[2:]:
+#         label_list = list(train_data_df[column])
+#         label_1_true = 0
+#         label_0 = 0
+#         label_1_false = 0
+#         label_2 = 0
+#         for label in label_list:
+#             if label == 1:
+#                 label_1_true += 1
+#             elif label == -1:
+#                 label_1_false += 1
+#             elif label == -2:
+#                 label_2 += 1
+#             else:
+#                 label_0 += 1
+#         label_1_true_pert = label_1_true/len_data
+#         label_1_false_pert = label_1_false/len_data
+#         label_2_pert = label_2/len_data
+#         label_0_pert = label_0/len_data
+#         # print("label_pert(1:0:-1:-2):", column, label_1_true_pert, label_0_pert, label_1_false_pert,
+#         #       label_2_pert)
+#         label_pert_dict[column] = [label_1_true_pert, label_0_pert, label_1_false_pert, label_2_pert]
+#     return label_pert_dict
 
 
-def get_labal_weight(label_pert_dict):
-    label_weight_dict = {}
-    for column, label_pert in label_pert_dict.items():
-        label_weight = [1-label_pert[0], 1-label_pert[1], 1-label_pert[2], 1-label_pert[3]]
-        label_weight_dict[column] = label_weight
-    return label_weight_dict
+# def get_labal_weight(label_pert_dict):
+#     label_weight_dict = {}
+#     for column, label_pert in label_pert_dict.items():
+#         label_weight = [1-label_pert[0], 1-label_pert[1], 1-label_pert[2], 1-label_pert[3]]
+#         label_weight_dict[column] = label_weight
+#     return label_weight_dict
 
 
-def get_labal_weight_new(label_dict, columns, num_classes):
+def get_labal_weight(label_dict, columns, num_classes):
     len_data = len(label_dict[columns[2]])
     print("len_data:", len_data)
     label_weight_dict = {}

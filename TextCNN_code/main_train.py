@@ -11,9 +11,9 @@ import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import argparse
-from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
-    shuffle_padding, sentence_word_to_index, get_vector_tfidf, BatchManager, get_max_len,\
-    get_weights_for_current_batch, compute_confuse_matrix, get_labal_weight_new
+from TextCNN_code.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
+    get_vector_tfidf, BatchManager, get_max_len, get_weights_for_current_batch, compute_confuse_matrix,\
+    get_labal_weight
 from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code.model import TextCNN
@@ -135,9 +135,6 @@ class Main:
             train_vector_tfidf = get_vector_tfidf(self.string_train, tfidf_dict)
             valid_vector_tfidf = get_vector_tfidf(self.string_valid, tfidf_dict)
             # print(train_vector_tfidf[0])
-            # 从训练集中获取label_pert_dict（存储标签比例）label_weight_dict（存储标签权重）
-            label_pert_dict = get_label_pert(self.train_data_df, self.columns)
-            self.label_weight_dict = get_labal_weight(label_pert_dict)
             # 语句序列化，将句子中的word和label映射成index，作为模型输入
             sentences_train, self.label_train_dict = sentence_word_to_index(self.string_train, self.word_to_index, self.label_train_dict, self.label_to_index)
             sentences_valid, self.label_valid_dict = sentence_word_to_index(self.string_valid, self.word_to_index, self.label_valid_dict, self.label_to_index)
@@ -147,11 +144,11 @@ class Main:
             # max_sentence = get_max_len(sentences_train)  # 获取最大评论序列长度
             train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, FLAGS.max_len)
             valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, FLAGS.max_len)
+            # 从训练集中获取label_weight_dict（存储标签权重）
+            self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
             with open(train_valid_test, "wb") as f:
                 pickle.dump([train_data, valid_data, self.label_weight_dict], f)
         print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
-        # 从训练集中获取label_weight_dict（存储标签权重）
-        self.label_weight_dict = get_labal_weight_new(train_data[2], self.columns, config.num_classes)
         # 获取train、valid数据的batch生成类
         self.train_batch_manager = BatchManager(train_data, int(FLAGS.batch_size))
         print("训练集批次数量：", self.train_batch_manager.len_data)
