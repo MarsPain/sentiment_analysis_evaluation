@@ -7,10 +7,8 @@ import os
 import tensorflow as tf
 import math
 import random
-from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
-    shuffle_padding, get_vector_tfidf, get_max_len,\
-    get_weights_for_current_batch
-from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
+from TextCNN_code.data_utils import seg_words, get_vector_tfidf
+from TextCNN_code.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code.model import TextCNN
 
@@ -138,33 +136,32 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    for column in columns[2:3]:
-        model_path = os.path.join(models_dir, column)
-        tf_config = tf.ConfigProto()
-        tf_config.gpu_options.allow_growth = True
-        with tf.Session(config=tf_config) as sess:
-            predictions_all = []
-            text_cnn, saver = create_model(sess, index_to_word)
-            saver.restore(sess, tf.train.latest_checkpoint(model_path))
-            logger.info("compete load %s model and start predict" % column)
-            for batch in test_batch_manager.iter_batch(shuffle=False):
-                test_x, features_vector = batch
-                # print(len(test_x[0]), test_x[0])
-                feed_dict = {text_cnn.input_x: test_x, text_cnn.features_vector: features_vector,
-                             text_cnn.dropout_keep_prob: 1.0}
-                predictions = sess.run([text_cnn.predictions], feed_dict)
-                # print("logits:", logits[0])
-                predictions_all.extend(list(predictions[0]))
-            # test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
-            # 将predictions映射到label，预测得到的是label的index。
-            logger.info("start transfer index to label")
-            for i in range(len(predictions_all)):
-                predictions_all[i] = index_to_label[predictions_all[i]]
-            # print(predictions_all)
-            test_data_df[column] = predictions_all
-        logger.info("compete %s predict" % column)
-    # test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
-    logger.info("compete predict test data")
+    column = columns[2]  # 选择评价对象
+    model_path = os.path.join(models_dir, column)
+    tf_config = tf.ConfigProto()
+    tf_config.gpu_options.allow_growth = True
+    with tf.Session(config=tf_config) as sess:
+        predictions_all = []
+        text_cnn, saver = create_model(sess, index_to_word)
+        saver.restore(sess, tf.train.latest_checkpoint(model_path))
+        logger.info("compete load %s model and start predict" % column)
+        for batch in test_batch_manager.iter_batch(shuffle=False):
+            test_x, features_vector = batch
+            # print(len(test_x[0]), test_x[0])
+            feed_dict = {text_cnn.input_x: test_x, text_cnn.features_vector: features_vector,
+                         text_cnn.dropout_keep_prob: 1.0}
+            predictions = sess.run([text_cnn.predictions], feed_dict)
+            # print("logits:", logits[0])
+            predictions_all.extend(list(predictions[0]))
+        # test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
+        # 将predictions映射到label，预测得到的是label的index。
+        logger.info("start transfer index to label")
+        for i in range(len(predictions_all)):
+            predictions_all[i] = index_to_label[predictions_all[i]]
+        # print(predictions_all)
+        test_data_df[column] = predictions_all
+    logger.info("compete %s predict" % column)
+    test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
 
 
 def test_f_score_in_valid_data(predictions_all, columns, label_to_index):

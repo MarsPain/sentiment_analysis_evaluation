@@ -163,13 +163,13 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        for column_name in column_name_list[2:3]:
-            logger.info("start %s model train" % column_name)
-            tf_config = tf.ConfigProto()
-            tf_config.gpu_options.allow_growth = True
-            with tf.Session(config=tf_config) as sess:
-                self.train(sess, column_name)
-            logger.info("complete %s model train" % column_name)
+        column_name = column_name_list[2]   # 选择评价对象
+        logger.info("start %s model train" % column_name)
+        tf_config = tf.ConfigProto()
+        tf_config.gpu_options.allow_growth = True
+        with tf.Session(config=tf_config) as sess:
+            self.train(sess, column_name)
+        logger.info("complete %s model train" % column_name)
         logger.info("complete all models' train")
 
     def train(self, sess, column_name):
