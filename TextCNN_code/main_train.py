@@ -117,7 +117,7 @@ class Main:
         else:   # 重新读取训练数据并创建各个映射字典
             self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = \
                 create_dict(self.string_train, self.label_train_dict, word_label_dict, FLAGS.vocab_size)
-        print(len(self.word_to_index), self.word_to_index)
+        # print(len(self.word_to_index), self.word_to_index)
         logger.info("complete get dict")
 
     def get_data(self):
@@ -148,6 +148,7 @@ class Main:
             self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
             with open(train_valid_test, "wb") as f:
                 pickle.dump([train_data, valid_data, self.label_weight_dict], f)
+        # self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
         print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
         # 获取train、valid数据的batch生成类
         self.train_batch_manager = BatchManager(train_data, int(FLAGS.batch_size))
@@ -163,7 +164,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        column_name = column_name_list[2]   # 选择评价对象
+        column_name = column_name_list[11]   # 选择评价对象
         logger.info("start %s model train" % column_name)
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
