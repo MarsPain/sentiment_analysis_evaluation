@@ -1,6 +1,7 @@
 import numpy as np
 import re
 import pandas as pd
+import tensorflow as tf
 
 
 # s = "sadasdas  dsadas d dasd dsa  dsa"
@@ -40,3 +41,12 @@ import pandas as pd
 
 # 测试在字符串的格式化中使用列表的字符串拼接
 # print("start %s model train" % " ".join(["a", "b"]))
+
+# 测试对二维tensor和三维tensor进行循环读取
+# a_list = [[1, 2, 3], [1, 2, 3], [1, 2, 3]]
+# a_tensor = tf.convert_to_tensor(a_list)
+# with tf.Session() as sess:
+#     size_0 = a_tensor.shape[0]
+#     print(size_0)
+#     for i in range(size_0):
+#         print(a_tensor[i])

@@ -28,10 +28,14 @@ class TextCNN:
         # print("input_x:", self.input_x)
         self.features_vector = tf.placeholder(tf.float32, [None, self.sequence_length], name="features_vector")  # features_vector
         # print("features_vector:", self.features_vector)
+        self.input_y_list = tf.placeholder(tf.int32, [None, None, ], name="input_y")  # labels:[None,num_classes]
+        # print("input_y_list:", self.input_y)
+        self.weights_list = tf.placeholder(tf.float32, [None, None, ], name="weights_label")  # 标签权重
+        # print("weights_list:", self.weights)
         self.input_y = tf.placeholder(tf.int32, [None, ], name="input_y")  # labels:[None,num_classes]
-        # print("input_y:", self.input_y)
+        # print("input_y_list:", self.input_y)
         self.weights = tf.placeholder(tf.float32, [None, ], name="weights_label")  # 标签权重
-        # print("weights:", self.weights)
+        # print("weights_list:", self.weights)
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
         self.iter = tf.placeholder(tf.int32)  # 记录training iteration
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
@@ -39,12 +43,16 @@ class TextCNN:
         self.epoch_increment = tf.assign(self.epoch_step, tf.add(self.epoch_step, tf.constant(1)))
 
         # 构造图
-        self.logits = self.inference_cnn()   # 获得预测值（one-hot向量：[batch_size, num_classes]）
-        self.loss_val = self.loss()  # 计算loss
-        self.train_op = self.train()    # 更新参数
-        self.predictions = tf.argmax(self.logits, 1, name="predictions")
-        correct_prediction = tf.equal(tf.cast(self.predictions, tf.int32), self.input_y)
-        self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="Accuracy")
+        num_task = self.input_y_list.shape[0]
+        for i in range(num_task):
+            self.input_y = self.input_y_list[i]
+            self.weights = self.weights_list[i]
+            self.logits = self.inference_cnn()   # 获得预测值（one-hot向量：[batch_size, num_classes]）
+            self.loss_val = self.loss()  # 计算loss
+            self.train_op = self.train()    # 更新参数
+            self.predictions = tf.argmax(self.logits, 1, name="predictions")
+            correct_prediction = tf.equal(tf.cast(self.predictions, tf.int32), self.input_y)
+            self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="Accuracy")
 
     def inference_cnn(self):
         h_bluescore = tf.layers.dense(self.features_vector, self.hidden_size / 2, use_bias=True)   # features_vector

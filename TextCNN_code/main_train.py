@@ -194,8 +194,8 @@ class Main:
                     weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
                     weights_list.append(weights)
                 # print("input_y:", input_y)
-                feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y_list,
-                             text_cnn.weights: weights_list, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
+                feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y_list: input_y_list,
+                             text_cnn.weights_list: weights_list, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
                              text_cnn.iter: iteration}
                 curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
                 loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
