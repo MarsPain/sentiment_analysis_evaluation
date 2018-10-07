@@ -162,6 +162,7 @@ class Main:
         模型文件夹以评价对象进行命名
         :return:
         """
+        # 开始多任务模型的构建
         logger.info("start train")
         column_name_list = self.columns
         column_name = column_name_list[11]   # 选择评价对象
