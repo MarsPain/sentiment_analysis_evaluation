@@ -1,10 +1,10 @@
 import re
 import jieba
 from gensim.models import word2vec
-from TextCNN_code.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
+from TextCNN_code_single.data_utils import seg_words, create_dict, get_label_pert, get_labal_weight,\
     shuffle_padding, sentence_word_to_index, get_vector_tfidf, BatchManager, get_max_len,\
     get_weights_for_current_batch, compute_confuse_matrix
-from TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
+from TextCNN_code_single.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
 
 

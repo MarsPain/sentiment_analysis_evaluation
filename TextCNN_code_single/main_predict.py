@@ -1,4 +1,4 @@
-from TextCNN_code import config
+from TextCNN_code_single import config
 import logging
 from sklearn.externals import joblib
 import pickle
@@ -7,19 +7,19 @@ import os
 import tensorflow as tf
 import math
 import random
-from TextCNN_code.data_utils import seg_words, get_vector_tfidf
-from TextCNN_code.utils import load_data_from_csv, load_tfidf_dict,\
+from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf
+from TextCNN_code_single.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding
-from TextCNN_code.model import TextCNN
+from TextCNN_code_single.model import TextCNN
 
 PAD_ID = 0
 UNK_ID = 1
 _PAD = "_PAD"
 _UNK = "UNK"
 
-test_data_path = "../data/sentiment_analysis_testa.csv"
+# test_data_path = "../data/sentiment_analysis_testa.csv"
 # test_data_path = "../data/sentiment_analysis_validationset.csv"
-# test_data_path = "result.csv"
+test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
 models_dir = "ckpt"
@@ -136,7 +136,7 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    column = columns[2]  # 选择评价对象
+    column = columns[4]  # 选择评价对象
     model_path = os.path.join(models_dir, column)
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
