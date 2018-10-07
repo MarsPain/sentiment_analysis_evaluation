@@ -35,6 +35,7 @@ def get_data():
     # load data
     logger.info("start load data")
     test_data_df = load_data_from_csv(test_data_path)
+    test_data_df = test_data_df.iloc[:100]
     if os.path.exists(test_data_pkl):    # 若train_valid_test已被处理和存储
         with open(word_label_dict, 'rb') as dict_f:
             word_to_index, index_to_word, label_to_index, index_to_label = pickle.load(dict_f)
@@ -136,31 +137,36 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    column = columns[2]  # 选择评价对象
-    model_path = os.path.join(models_dir, column)
+    column_name_mini_list = columns[2:5]  # 选择评价对象
+    num_task = len(column_name_mini_list)
+    model_path = os.path.join(models_dir, "location")
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
     with tf.Session(config=tf_config) as sess:
         predictions_all = []
         text_cnn, saver = create_model(sess, index_to_word)
         saver.restore(sess, tf.train.latest_checkpoint(model_path))
-        logger.info("compete load %s model and start predict" % column)
+        logger.info("compete load %s model and start predict" % " ".join(column_name_mini_list))
+        predictions_all = [[] for i in range(num_task)]
         for batch in test_batch_manager.iter_batch(shuffle=False):
             test_x, features_vector = batch
             # print(len(test_x[0]), test_x[0])
             feed_dict = {text_cnn.input_x: test_x, text_cnn.features_vector: features_vector,
                          text_cnn.dropout_keep_prob: 1.0}
-            predictions = sess.run([text_cnn.predictions], feed_dict)
-            # print("logits:", logits[0])
-            predictions_all.extend(list(predictions[0]))
+            predictions_list = sess.run([text_cnn.predictions_list], feed_dict)
+            # print("predictions_list:", predictions_list[0][0])
+            for i in range(num_task):
+                predictions_all[i].extend(list(predictions_list[0][i]))
         # test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
-        for i in range(len(predictions_all)):
-            predictions_all[i] = index_to_label[predictions_all[i]]
+        for i in range(num_task):
+            for j in range(len(predictions_all[i])):
+                predictions_all[i][j] = index_to_label[predictions_all[i][j]]
         # print(predictions_all)
-        test_data_df[column] = predictions_all
-    logger.info("compete %s predict" % column)
+        for index, column_name in enumerate(column_name_mini_list):
+            test_data_df[column_name] = predictions_all[index]
+    logger.info("compete %s predict" % " ".join(column_name_mini_list))
     test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
 
 
