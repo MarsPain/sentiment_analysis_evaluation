@@ -37,3 +37,6 @@ import pandas as pd
 # value = np.bincount(y)
 # print(type(value), value)
 # print(10 / (2 * value))
+
+# 测试在字符串的格式化中使用列表的字符串拼接
+# print("start %s model train" % " ".join(["a", "b"]))

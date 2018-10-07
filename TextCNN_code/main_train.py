@@ -165,17 +165,17 @@ class Main:
         # 开始多任务模型的构建
         logger.info("start train")
         column_name_list = self.columns
-        column_name = column_name_list[11]   # 选择评价对象
-        logger.info("start %s model train" % column_name)
+        column_name_mini_list = column_name_list[2:5]   # 选择评价对象
+        logger.info("start %s model train" % " ".join(column_name_mini_list))
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
         with tf.Session(config=tf_config) as sess:
-            self.train(sess, column_name)
-        logger.info("complete %s model train" % column_name)
+            self.train(sess, column_name_mini_list)
+        logger.info("complete %s model train" % " ".join(column_name_mini_list))
         logger.info("complete all models' train")
 
-    def train(self, sess, column_name):
-        text_cnn, saver = self.create_model(sess, column_name)
+    def train(self, sess, column_name_mini_list):
+        text_cnn, saver = self.create_model(sess, "location")
         curr_epoch = sess.run(text_cnn.epoch_step)
         iteration = 0
         best_acc = 0.50
@@ -186,11 +186,16 @@ class Main:
             for batch in self.train_batch_manager.iter_batch(shuffle=True):
                 iteration += 1
                 input_x, features_vector, input_y_dict = batch
-                input_y = input_y_dict[column_name]
+                input_y_list = []
+                weights_list = []
+                for column_name in column_name_mini_list:
+                    input_y = input_y_dict[column_name]
+                    input_y_list.append(input_y)
+                    weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
+                    weights_list.append(weights)
                 # print("input_y:", input_y)
-                weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
-                feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
-                             text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
+                feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y_list,
+                             text_cnn.weights: weights_list, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
                              text_cnn.iter: iteration}
                 curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
                 loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
@@ -200,12 +205,12 @@ class Main:
             sess.run(text_cnn.epoch_increment)
             # valid
             if epoch % FLAGS.validate_every == 0:
-                eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
+                eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, " ".join(column_name_mini_list))
                 print("【Validation】Epoch %d\t f_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f" % (epoch, f_0, f_1, f_2, f_3))
                 print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
                 # save model to checkpoint
                 if f1_scoree > best_f1_score:
-                    save_path = FLAGS.ckpt_dir + "/" + column_name + "/model.ckpt"
+                    save_path = FLAGS.ckpt_dir + "/" + " ".join(column_name_mini_list) + "/model.ckpt"
                     print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
                           ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
                     saver.save(sess, save_path, global_step=epoch)
