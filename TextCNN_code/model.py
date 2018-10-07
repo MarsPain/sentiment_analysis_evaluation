@@ -42,6 +42,7 @@ class TextCNN:
         self.epoch_step = tf.Variable(0, trainable=False, name="Epoch_Step")
         self.epoch_increment = tf.assign(self.epoch_step, tf.add(self.epoch_step, tf.constant(1)))
         self.loss_val_list = []
+        self.logits_list = []
         self.predictions_list = []
         self.accuracy_list = []
 
@@ -51,6 +52,7 @@ class TextCNN:
         self.input_y = self.input_y_list[0]
         self.weights = self.weights_list[0]
         self.logits = self.inference_cnn()  # 获得预测值（one-hot向量：[batch_size, num_classes]）
+        self.logits_list.append(self.logits)
         self.loss_val = self.loss()  # 计算loss
         self.loss_val_list.append(self.loss_val)
         self.train_op = self.train()  # 更新参数
@@ -64,6 +66,7 @@ class TextCNN:
                 self.input_y = self.input_y_list[i]
                 self.weights = self.weights_list[i]
                 self.logits = self.inference_cnn2()   # 获得预测值（one-hot向量：[batch_size, num_classes]）
+                self.logits_list.append(self.logits)
                 self.loss_val = self.loss()  # 计算loss
                 self.loss_val_list.append(self.loss_val)
                 self.train_op = self.train()    # 更新参数

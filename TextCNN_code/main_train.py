@@ -217,9 +217,8 @@ class Main:
             sess.run(text_cnn.epoch_increment)
             # valid
             if epoch % FLAGS.validate_every == 0:
-                eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, " ".join(column_name_mini_list))
-                print("【Validation】Epoch %d\t f_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f" % (epoch, f_0, f_1, f_2, f_3))
-                print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
+                eval_loss, eval_accc, f1_scoree, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name_mini_list, num_task, epoch)
+                print("【Average Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
                 # save model to checkpoint
                 if f1_scoree > best_f1_score:
                     save_path = FLAGS.ckpt_dir + "/" + " ".join(column_name_mini_list) + "/model.ckpt"
@@ -259,54 +258,73 @@ class Main:
                 print("using pre-trained word emebedding.ended...")
         return text_cnn, saver
 
-    def evaluate(self, sess, text_cnn, batch_manager, iteration, column_name):
+    def evaluate(self, sess, text_cnn, batch_manager, iteration, column_name_mini_list, num_task, epoch):
         small_value = 0.00001
         # file_object = open('data/log_predict_error.txt', 'a')
-        eval_loss, eval_accc, eval_counter = 0.0, 0.0, 0
+        eval_loss_all, eval_accc_all, eval_counter = 0.0, 0.0, 0
         true_positive_0_all, false_positive_0_all, false_negative_0_all, true_positive_1_all, false_positive_1_all, false_negative_1_all,\
         true_positive_2_all, false_positive_2_all, false_negative_2_all, true_positive_3_all, false_positive_3_all, false_negative_3_all = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        eval_loss_list = [0 for i in range(num_task)]
+        accc_list = [0 for i in range(num_task)]
         weights_label = {}  # weight_label[label_index]=(number,correct)
+        confuse_matrix_list = [[[0, 0, 0] for j in range(4)] for i in range(num_task)]
         for batch in batch_manager.iter_batch(shuffle=True):
             eval_x, features_vector, eval_y_dict = batch
-            eval_y = eval_y_dict[column_name]
-            weights = get_weights_for_current_batch(eval_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
-            feed_dict = {text_cnn.input_x: eval_x, text_cnn.features_vector: features_vector, text_cnn.input_y: eval_y,
-                         text_cnn.weights: weights, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
-            curr_eval_loss, curr_accc, logits = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits], feed_dict)
-            true_positive_0, false_positive_0, false_negative_0, true_positive_1, false_positive_1, false_negative_1,\
-            true_positive_2, false_positive_2, false_negative_2, true_positive_3, false_positive_3, false_negative_3 = compute_confuse_matrix(logits, eval_y, small_value)
-            true_positive_0_all += true_positive_0
-            false_positive_0_all += false_positive_0
-            false_negative_0_all += false_negative_0
-            true_positive_1_all += true_positive_1
-            false_positive_1_all += false_positive_1
-            false_negative_1_all += false_negative_1
-            true_positive_2_all += true_positive_2
-            false_positive_2_all += false_positive_2
-            false_negative_2_all += false_negative_2
-            true_positive_3_all += true_positive_3
-            false_positive_3_all += false_positive_3
-            false_negative_3_all += false_negative_3
+            eval_y_list = []
+            weights_list = []
+            for column_name in column_name_mini_list:
+                eval_y = eval_y_dict[column_name]
+                eval_y_list.append(eval_y)
+                weights = get_weights_for_current_batch(eval_y, self.label_weight_dict[column_name])  # 根据类别权重参数更新训练集各标签的权重
+                weights_list.append(weights)
+            feed_dict = {text_cnn.input_x: eval_x, text_cnn.features_vector: features_vector, text_cnn.input_y_list: eval_y_list,
+                         text_cnn.weights_list: weights_list, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
+            curr_eval_loss_list, curr_accc_list, logits_list = sess.run([text_cnn.loss_val_list, text_cnn.accuracy_list, text_cnn.logits_list], feed_dict)
+            for i in range(num_task):
+                eval_loss_list[i] += curr_eval_loss_list[i]
+                accc_list[i] += curr_accc_list[i]
+                eval_loss_all += curr_eval_loss_list[i]
+                eval_accc_all += curr_accc_list[i]
+            for index, column_name in enumerate(column_name_mini_list):
+                true_positive_0, false_positive_0, false_negative_0, true_positive_1, false_positive_1, false_negative_1,\
+                true_positive_2, false_positive_2, false_negative_2, true_positive_3, false_positive_3, false_negative_3 = compute_confuse_matrix(logits_list[index], eval_y_list[index], small_value)
+                confuse_matrix_list[index][0][0] += true_positive_0
+                confuse_matrix_list[index][0][1] += false_positive_0
+                confuse_matrix_list[index][0][2] += false_negative_0
+                confuse_matrix_list[index][1][0] += true_positive_1
+                confuse_matrix_list[index][1][1] += false_positive_1
+                confuse_matrix_list[index][1][2] += false_negative_1
+                confuse_matrix_list[index][2][0] += true_positive_2
+                confuse_matrix_list[index][2][1] += false_positive_2
+                confuse_matrix_list[index][2][2] += false_negative_2
+                confuse_matrix_list[index][3][0] += true_positive_3
+                confuse_matrix_list[index][3][1] += false_positive_3
+                confuse_matrix_list[index][3][2] += false_negative_3
+            eval_counter += 1
             # write_predict_error_to_file(file_object, logits, eval_y, self.index_to_word, eval_x1, eval_x2)    # 获取被错误分类的样本（后期再处理）
-            eval_loss, eval_accc, eval_counter = eval_loss+curr_eval_loss, eval_accc+curr_accc, eval_counter+1
         # print("标签0的预测情况：", true_positive_0, false_positive_0, false_negative_0)
-        p_0 = float(true_positive_0_all)/float(true_positive_0_all+false_positive_0_all+small_value)
-        r_0 = float(true_positive_0_all)/float(true_positive_0_all+false_negative_0_all+small_value)
-        f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
-        # print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1)
-        p_1 = float(true_positive_1_all)/float(true_positive_1_all+false_positive_1_all+small_value)
-        r_1 = float(true_positive_1_all)/float(true_positive_1_all+false_negative_1_all+small_value)
-        f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
-        # print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2)
-        p_2 = float(true_positive_2_all)/float(true_positive_2_all+false_positive_2_all+small_value)
-        r_2 = float(true_positive_2_all)/float(true_positive_2_all+false_negative_2_all+small_value)
-        f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
-        # print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3)
-        p_3 = float(true_positive_3_all)/float(true_positive_3_all+false_positive_3_all+small_value)
-        r_3 = float(true_positive_3_all)/float(true_positive_3_all+false_negative_3_all+small_value)
-        f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
-        f1_score = (f_0 + f_1 + f_2 + f_3) / 4
-        return eval_loss/float(eval_counter), eval_accc/float(eval_counter), f1_score, f_0, f_1, f_2, f_3, weights_label
+        f1_score_all = 0
+        for index, column_name in enumerate(column_name_mini_list):
+            p_0 = float(confuse_matrix_list[index][0][0])/float(confuse_matrix_list[index][0][0]+confuse_matrix_list[index][0][1]+small_value)
+            r_0 = float(confuse_matrix_list[index][0][0])/float(confuse_matrix_list[index][0][0]+confuse_matrix_list[index][0][2]+small_value)
+            f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
+            # print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1)
+            p_1 = float(confuse_matrix_list[index][1][0])/float(confuse_matrix_list[index][1][0] + confuse_matrix_list[index][1][1] + small_value)
+            r_1 = float(confuse_matrix_list[index][1][0])/float(confuse_matrix_list[index][1][0] + confuse_matrix_list[index][1][2] + small_value)
+            f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
+            # print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2)
+            p_2 = float(confuse_matrix_list[index][2][0])/float(confuse_matrix_list[index][2][0] + confuse_matrix_list[index][2][1] + small_value)
+            r_2 = float(confuse_matrix_list[index][2][0])/float(confuse_matrix_list[index][2][0] + confuse_matrix_list[index][2][2] + small_value)
+            f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
+            # print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3)
+            p_3 = float(confuse_matrix_list[index][3][0])/float(confuse_matrix_list[index][3][0] + confuse_matrix_list[index][3][1] + small_value)
+            r_3 = float(confuse_matrix_list[index][3][0])/float(confuse_matrix_list[index][3][0] + confuse_matrix_list[index][3][2] + small_value)
+            f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
+            f1_score = (f_0 + f_1 + f_2 + f_3) / 4
+            print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f\tf_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f\tModel: %s" %
+                  (epoch, eval_loss_list[index]/float(eval_counter), accc_list[index]/float(eval_counter), f1_score, f_0, f_1, f_2, f_3, column_name))
+            f1_score_all += f1_score
+        return eval_loss_all/float(eval_counter*num_task), eval_accc_all/float(eval_counter*num_task), f1_score_all/num_task, weights_label
 
 if __name__ == "__main__":
     main = Main()
