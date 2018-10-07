@@ -86,8 +86,8 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
-        content_train = self.train_data_df.iloc[:, 1]
-        content_valid = self.validate_data_df.iloc[:, 1]
+        content_train = self.train_data_df.iloc[:1000, 1]
+        content_valid = self.validate_data_df.iloc[:1000, 1]
         logger.info("start seg train data")
         self.string_train = seg_words(content_train, FLAGS.tokenize_style)  # 根据tokenize_style对评论字符串进行分词
         print("训练集大小：", len(self.string_train))
@@ -98,11 +98,11 @@ class Main:
         logger.info("load label data")
         self.label_train_dict = {}
         for column in self.columns[2:]:
-            label_train = list(self.train_data_df[column].iloc[:])
+            label_train = list(self.train_data_df[column].iloc[:1000])
             self.label_train_dict[column] = label_train
         self.label_valid_dict = {}
         for column in self.columns[2:]:
-            label_valid = list(self.validate_data_df[column].iloc[:])
+            label_valid = list(self.validate_data_df[column].iloc[:1000])
             self.label_valid_dict[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
@@ -175,13 +175,16 @@ class Main:
         logger.info("complete all models' train")
 
     def train(self, sess, column_name_mini_list):
+        num_task = len(column_name_mini_list)
         text_cnn, saver = self.create_model(sess, "location")
         curr_epoch = sess.run(text_cnn.epoch_step)
         iteration = 0
         best_acc = 0.50
         best_f1_score = 0.20
         for epoch in range(curr_epoch, FLAGS.num_epochs):
-            loss, eval_acc, counter = 0.0, 0.0, 0
+            loss_list = [0 for i in range(num_task)]
+            eval_acc_list = [0 for i in range(num_task)]
+            counter = 0
             # train
             for batch in self.train_batch_manager.iter_batch(shuffle=True):
                 iteration += 1
@@ -197,10 +200,15 @@ class Main:
                 feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y_list: input_y_list,
                              text_cnn.weights_list: weights_list, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
                              text_cnn.iter: iteration}
-                curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
-                loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                if counter % 100 == 0:  # steps_check
-                    print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
+                curr_loss_list, curr_acc_list, lr, _ = sess.run([text_cnn.loss_val_list, text_cnn.accuracy_list, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
+                counter += 1
+                for i in range(num_task):
+                    loss_list[i] += curr_loss_list[i]
+                    eval_acc_list[i] += curr_acc_list[i]
+                if counter % 1 == 0:  # steps_check
+                    for index, column_name in enumerate(column_name_mini_list):
+                        print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f\tModel %s" % (epoch, counter, loss_list[index]/float(counter), eval_acc_list[index]/float(counter), lr, column_name))
+                    # print("Average： Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (column_name, epoch, counter, loss_list[index]/float(counter), eval_acc_list[index]/float(counter), lr))
             print("going to increment epoch counter....")
             sess.run(text_cnn.epoch_increment)
             # valid
