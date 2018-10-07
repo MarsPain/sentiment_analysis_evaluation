@@ -221,7 +221,7 @@ class Main:
                 print("【Average Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
                 # save model to checkpoint
                 if f1_scoree > best_f1_score:
-                    save_path = FLAGS.ckpt_dir + "/" + " ".join(column_name_mini_list) + "/model.ckpt"
+                    save_path = FLAGS.ckpt_dir + "/location" + "/model.ckpt"
                     print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
                           ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
                     saver.save(sess, save_path, global_step=epoch)
