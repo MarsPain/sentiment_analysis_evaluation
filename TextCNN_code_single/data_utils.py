@@ -13,16 +13,28 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 
+stopwords_path = "data/stop_words.txt"
+
+
 def seg_words(contents, tokenize_style):
     string_segs = []
     if tokenize_style == "word":
+        stopwords = stopwordslist(stopwords_path)
+        stopwords_set = set(stopwords)
         for content in contents:
             content = re.sub(" ", "，", content.strip())
             # print(content)
             content = re.sub("\n", "", content.strip())
             segs = jieba.cut(content.strip())
-            # print(" ".join(segs))
-            string_segs.append(" ".join(segs))
+            segs_new = []
+            for word in segs:
+                if word not in stopwords_set:
+                    segs_new.append(word)
+                else:
+                    pass
+                    # print("发现停用词：%s" % word)
+            # print(" ".join(segs_new))
+            string_segs.append(" ".join(segs_new))
     else:
         for content in contents:
             content = re.sub(" ", "，", content.strip())
@@ -31,6 +43,17 @@ def seg_words(contents, tokenize_style):
             # print(" ".join(list(content.strip())))
             string_segs.append(" ".join(list(content.strip())))
     return string_segs
+
+
+def stopwordslist(path):
+    # stopwords = [line.strip() for line in open(path, 'r', encoding='utf-8').readlines()]
+    stopwords = []
+    with open(path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines:
+            stopwords.append(line.strip())
+    # print(stopwords)
+    return stopwords
 
 
 def create_dict(string_train, label_list, path, vocab_size):
@@ -137,7 +160,7 @@ def get_labal_weight(label_dict, columns, num_classes):
                 label_3 += 1
         label_number_array = np.asarray([label_0, label_1, label_2, label_3])
         label_weight_list = len_data / (num_classes * label_number_array)
-        print(column, label_number_array, label_weight_list)
+        # print(column, label_number_array, label_weight_list)
         label_weight_dict[column] = label_weight_list
     return label_weight_dict
 
