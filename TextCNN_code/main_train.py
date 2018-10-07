@@ -184,6 +184,8 @@ class Main:
         for epoch in range(curr_epoch, FLAGS.num_epochs):
             loss_list = [0 for i in range(num_task)]
             eval_acc_list = [0 for i in range(num_task)]
+            loss_all = 0
+            eval_acc_all = 0
             counter = 0
             # train
             for batch in self.train_batch_manager.iter_batch(shuffle=True):
@@ -205,10 +207,12 @@ class Main:
                 for i in range(num_task):
                     loss_list[i] += curr_loss_list[i]
                     eval_acc_list[i] += curr_acc_list[i]
+                    loss_all += curr_loss_list[i]
+                    eval_acc_all += curr_acc_list[i]
                 if counter % 1 == 0:  # steps_check
                     for index, column_name in enumerate(column_name_mini_list):
                         print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f\tModel %s" % (epoch, counter, loss_list[index]/float(counter), eval_acc_list[index]/float(counter), lr, column_name))
-                    # print("Average： Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (column_name, epoch, counter, loss_list[index]/float(counter), eval_acc_list[index]/float(counter), lr))
+                    print("Average： Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss_all/float(counter*num_task), eval_acc_all/float(counter*num_task), lr))
             print("going to increment epoch counter....")
             sess.run(text_cnn.epoch_increment)
             # valid
