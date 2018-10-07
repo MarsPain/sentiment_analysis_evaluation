@@ -3,7 +3,7 @@
 
 import os
 num_classes = 4
-num_epochs = 20
+num_epochs = 30
 batch_size = 32
 vocab_size = 210000
 tokenize_style = "word"
