@@ -21,6 +21,7 @@ def seg_words(contents, tokenize_style):
     if tokenize_style == "word":
         stopwords = stopwordslist(stopwords_path)
         stopwords_set = set(stopwords)
+        stopwords_set = set()
         for content in contents:
             content = re.sub(" ", "，", content.strip())
             # print(content)
