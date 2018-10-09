@@ -13,14 +13,14 @@ import os
 import argparse
 from TextCNN_code_single.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
     get_vector_tfidf, BatchManager, get_max_len, get_weights_for_current_batch, compute_confuse_matrix,\
-    get_labal_weight
+    get_labal_weight, get_least_label, afresh_sampling
 from TextCNN_code_single.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code_single.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_3", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_8", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -69,8 +69,10 @@ class Main:
         self.label_to_index = None   # label到index的映射字典
         self.index_to_label = None  # index到label的映射字典
         self.label_weight_dict = None   # 存储标签权重
-        self.train_batch_manager = None  # train数据batch生成类
+        # self.train_batch_manager = None  # train数据batch生成类
         self.valid_batch_manager = None  # valid数据batch生成类
+        self.least_label_dict = None    # 获取每种评价对象的标签中数量最少的标签数量
+        self.train_data = None  # 被打包好的训练数据
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
@@ -86,8 +88,8 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
-        content_train = self.train_data_df.iloc[:, 1]
-        content_valid = self.validate_data_df.iloc[:, 1]
+        content_train = self.train_data_df.iloc[:10000, 1]
+        content_valid = self.validate_data_df.iloc[:1500, 1]
         logger.info("start seg train data")
         self.string_train = seg_words(content_train, FLAGS.tokenize_style)  # 根据tokenize_style对评论字符串进行分词
         print("训练集大小：", len(self.string_train))
@@ -98,11 +100,11 @@ class Main:
         logger.info("load label data")
         self.label_train_dict = {}
         for column in self.columns[2:]:
-            label_train = list(self.train_data_df[column].iloc[:])
+            label_train = list(self.train_data_df[column].iloc[:10000])
             self.label_train_dict[column] = label_train
         self.label_valid_dict = {}
         for column in self.columns[2:]:
-            label_valid = list(self.validate_data_df[column].iloc[:])
+            label_valid = list(self.validate_data_df[column].iloc[:1500])
             self.label_valid_dict[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
@@ -125,7 +127,7 @@ class Main:
         train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_3.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
-                train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
+                self.train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
             # 获取tfidf值并存储为tfidf字典
             if not os.path.exists(FLAGS.tfidf_path):
@@ -142,17 +144,18 @@ class Main:
             # print(self.label_train_dict["location_traffic_convenience"])
             # 打乱数据、padding,并对评论序列、特征向量、标签字典打包
             # max_sentence = get_max_len(sentences_train)  # 获取最大评论序列长度
-            train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, FLAGS.max_len)
+            self.train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, FLAGS.max_len)
             valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, FLAGS.max_len)
             # 从训练集中获取label_weight_dict（存储标签权重）
-            self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
+            self.label_weight_dict = get_labal_weight(self.train_data[2], self.columns, config.num_classes)
             with open(train_valid_test, "wb") as f:
-                pickle.dump([train_data, valid_data, self.label_weight_dict], f)
-        # self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
-        print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
+                pickle.dump([self.train_data, valid_data, self.label_weight_dict], f)
+        # 获取每种评价对象的标签中数量最少的标签数量least_label_dict
+        self.least_label_dict = get_least_label(self.train_data[2], self.columns)
+        print("训练集大小：", len(self.train_data[0]), "验证集大小：", len(valid_data[0]))
         # 获取train、valid数据的batch生成类
-        self.train_batch_manager = BatchManager(train_data, int(FLAGS.batch_size))
-        print("训练集批次数量：", self.train_batch_manager.len_data)
+        # self.train_batch_manager = BatchManager(self.train_data, int(FLAGS.batch_size))
+        # print("训练集批次数量：", self.train_batch_manager.len_data)
         self.valid_batch_manager = BatchManager(valid_data, int(FLAGS.batch_size))
         logger.info("complete get data")
 
@@ -164,7 +167,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        column_name = column_name_list[2]   # 选择评价对象
+        column_name = column_name_list[11]   # 选择评价对象
         logger.info("start %s model train" % column_name)
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
@@ -182,10 +185,11 @@ class Main:
         for epoch in range(curr_epoch, FLAGS.num_epochs):
             loss, eval_acc, counter = 0.0, 0.0, 0
             # train
-            for batch in self.train_batch_manager.iter_batch(shuffle=True):
+            train_batch_sample_manager = afresh_sampling(self.train_data, self.least_label_dict, column_name, int(FLAGS.batch_size))
+            print("训练集批次数量：", train_batch_sample_manager.len_data)
+            for batch in train_batch_sample_manager.iter_batch(shuffle=True):
                 iteration += 1
-                input_x, features_vector, input_y_dict = batch
-                input_y = input_y_dict[column_name]
+                input_x, features_vector, input_y = batch
                 # print("input_y:", input_y)
                 weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
                 feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
@@ -193,7 +197,7 @@ class Main:
                              text_cnn.iter: iteration}
                 curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
                 loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                if counter % 100 == 0:  # steps_check
+                if counter % 2 == 0:  # steps_check
                     print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
             print("going to increment epoch counter....")
             sess.run(text_cnn.epoch_increment)

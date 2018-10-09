@@ -20,7 +20,7 @@ def seg_words(contents, tokenize_style):
     string_segs = []
     if tokenize_style == "word":
         stopwords = stopwordslist(stopwords_path)
-        stopwords_set = set(stopwords)
+        # stopwords_set = set(stopwords)
         stopwords_set = set()
         for content in contents:
             content = re.sub(" ", "，", content.strip())
@@ -160,10 +160,35 @@ def get_labal_weight(label_dict, columns, num_classes):
             else:
                 label_3 += 1
         label_number_array = np.asarray([label_0, label_1, label_2, label_3])
-        label_weight_list = len_data / (num_classes * label_number_array)
+        # label_weight_list = len_data / (num_classes * label_number_array)
+        label_weight_list = [1, 1, 1, 1]    # 取消权重参数
         # print(column, label_number_array, label_weight_list)
         label_weight_dict[column] = label_weight_list
     return label_weight_dict
+
+
+def get_least_label(label_dict, columns):
+    least_label_dict = {}
+    for column in columns[2:]:
+        label_list = list(label_dict[column])
+        label_0 = 0
+        label_1 = 0
+        label_2 = 0
+        label_3 = 0
+        for label in label_list:
+            if label == 0:
+                label_0 += 1
+            elif label == 1:
+                label_1 += 1
+            elif label == 2:
+                label_2 += 1
+            else:
+                label_3 += 1
+        label_number_array = np.asarray([label_0, label_1, label_2, label_3])
+        least_label_num = min(label_0, label_1, label_2, label_3)
+        print(column, label_number_array, least_label_num)
+        least_label_dict[column] = least_label_num
+    return least_label_dict
 
 
 def sentence_word_to_index(string, word_to_index, label_train_dict, label_to_index):
@@ -259,6 +284,32 @@ class BatchManager:
             yield self.batch_data[idx]
 
 
+class SampleBatchManager:
+    """
+    用于生成batch数据的batch管理类
+    """
+    def __init__(self, data,  batch_size):
+        self.batch_data = self.get_batch(data, batch_size)
+        self.len_data = len(self.batch_data)
+
+    @staticmethod
+    def get_batch(data, batch_size):
+        num_batch = int(math.ceil(len(data[0]) / batch_size))
+        batch_data = []
+        for i in range(num_batch):
+            sentences = data[0][i*batch_size:(i+1)*batch_size]
+            vector_tfidf = data[1][i*batch_size:(i+1)*batch_size]
+            label = data[2][i*batch_size:(i+1)*batch_size]
+            batch_data.append([sentences, vector_tfidf, label])
+        return batch_data
+
+    def iter_batch(self, shuffle=False):
+        if shuffle:
+            random.shuffle(self.batch_data)
+        for idx in range(self.len_data):
+            yield self.batch_data[idx]
+
+
 def get_weights_for_current_batch(answer_list, weights_dict):
     weights_list_batch = list(np.ones((len(answer_list))))
     answer_list = list(answer_list)
@@ -320,3 +371,23 @@ def compute_confuse_matrix(logit, label, small_value):
             false_negative_3 += 1
     return true_positive_0, false_positive_0, false_negative_0, true_positive_1, false_positive_1, false_negative_1,\
            true_positive_2, false_positive_2, false_negative_2, true_positive_3, false_positive_3, false_negative_3
+
+
+def afresh_sampling(train_data, least_label_dict, column_name, batch_size):
+    sentences, feature_vector, label_dict = train_data
+    label = label_dict[column_name]
+    sentences_shuffle = []
+    label_shuffle = []
+    vector_tfidf_shuffle = []
+    least_label_num = least_label_dict[column_name]
+    len_data = len(sentences)
+    random_perm = np.random.permutation(len_data)   # 对索引进行随机排序
+    for index in random_perm:
+        if len(sentences[index]) != len(feature_vector[index]):
+            print("Error!!!!!!", len(sentences[index]), len(feature_vector))
+        sentences_shuffle.append(sentences[index])
+        vector_tfidf_shuffle.append(feature_vector[index])
+        label_shuffle.append(label[index])
+    train_data_sample = [sentences_shuffle[:least_label_num], vector_tfidf_shuffle[:least_label_num], label_shuffle[:least_label_num]]
+    train_batch_sample_manager = SampleBatchManager(train_data_sample, batch_size)
+    return train_batch_sample_manager
