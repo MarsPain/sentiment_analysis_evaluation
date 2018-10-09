@@ -28,6 +28,7 @@ tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_traini
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("test_data_path", "../data/sentiment_analysis_testa.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model.txt", "word2vec's embedding for word")
+# tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.txt", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for char")
@@ -43,7 +44,7 @@ tf.app.flags.DEFINE_integer("num_filters", config.num_filters, "number of filter
 tf.app.flags.DEFINE_integer("max_len", config.max_len, "max sentence length. length should be divide by 3,""which is used by k max pooling.")
 tf.app.flags.DEFINE_integer("top_k", config.top_k, "value of top k for k-max polling")
 tf.app.flags.DEFINE_float("learning_rate", config.learning_rate, "learning rate")  # 0.001
-tf.app.flags.DEFINE_boolean("decay_lr_flag", True, "whether manally decay lr")
+tf.app.flags.DEFINE_boolean("decay_lr_flag", False, "whether manally decay lr")
 tf.app.flags.DEFINE_float("clip_gradients", config.clip_gradients, "clip_gradients")
 tf.app.flags.DEFINE_integer("validate_every", config.validate_every, "Validate every validate_every epochs.")
 tf.app.flags.DEFINE_float("dropout_keep_prob", config.dropout_keep_prob, "dropout keep probability")
@@ -164,7 +165,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        column_name = column_name_list[2]   # 选择评价对象
+        column_name = column_name_list[3]   # 选择评价对象
         logger.info("start %s model train" % column_name)
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
@@ -219,11 +220,11 @@ class Main:
         text_cnn = TextCNN()
         saver = tf.train.Saver()
         model_save_dir = FLAGS.ckpt_dir + "/" + column_name
-        if os.path.exists(model_save_dir+"checkpoint"):
+        if os.path.exists(model_save_dir):
             print("Restoring Variables from Checkpoint.")
             saver.restore(sess, tf.train.latest_checkpoint(model_save_dir))
             if FLAGS.decay_lr_flag:
-                for i in range(2):  # decay learning rate if necessary.
+                for i in range(1):  # decay learning rate if necessary.
                     print(i, "Going to decay learning rate by half.")
                     sess.run(text_cnn.learning_rate_decay_half_op)
         else:
