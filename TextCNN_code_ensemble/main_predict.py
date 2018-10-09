@@ -1,4 +1,4 @@
-from TextCNN_code_single import config
+from TextCNN_code_ensemble import config
 import logging
 from sklearn.externals import joblib
 import pickle
@@ -7,10 +7,10 @@ import os
 import tensorflow as tf
 import math
 import random
-from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf
+from TextCNN_code_ensemble.data_utils import seg_words, get_vector_tfidf
 from TextCNN_code_single.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding
-from TextCNN_code_single.model import TextCNN
+from TextCNN_code_ensemble.model import TextCNN
 
 PAD_ID = 0
 UNK_ID = 1
