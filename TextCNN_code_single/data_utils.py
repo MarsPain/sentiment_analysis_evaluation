@@ -381,13 +381,36 @@ def afresh_sampling(train_data, least_label_dict, column_name, batch_size):
     vector_tfidf_shuffle = []
     least_label_num = least_label_dict[column_name]
     len_data = len(sentences)
+    label_0_count = 0
+    label_1_count = 0
+    label_2_count = 0
+    label_3_count = 0
     random_perm = np.random.permutation(len_data)   # 对索引进行随机排序
     for index in random_perm:
-        if len(sentences[index]) != len(feature_vector[index]):
-            print("Error!!!!!!", len(sentences[index]), len(feature_vector))
-        sentences_shuffle.append(sentences[index])
-        vector_tfidf_shuffle.append(feature_vector[index])
-        label_shuffle.append(label[index])
-    train_data_sample = [sentences_shuffle[:least_label_num], vector_tfidf_shuffle[:least_label_num], label_shuffle[:least_label_num]]
+        if label_0_count == least_label_num and label_1_count == least_label_num and label_2_count == least_label_num and label_3_count == least_label_num:
+            break
+        if label[index] == 0 and label_0_count != least_label_num:
+            sentences_shuffle.append(sentences[index])
+            vector_tfidf_shuffle.append(feature_vector[index])
+            label_shuffle.append(label[index])
+            label_0_count += 1
+        elif label[index] == 1 and label_1_count != least_label_num:
+            sentences_shuffle.append(sentences[index])
+            vector_tfidf_shuffle.append(feature_vector[index])
+            label_shuffle.append(label[index])
+            label_1_count += 1
+        elif label[index] == 2 and label_2_count != least_label_num:
+            sentences_shuffle.append(sentences[index])
+            vector_tfidf_shuffle.append(feature_vector[index])
+            label_shuffle.append(label[index])
+            label_2_count += 1
+        elif label[index] == 3 and label_3_count != least_label_num:
+            sentences_shuffle.append(sentences[index])
+            vector_tfidf_shuffle.append(feature_vector[index])
+            label_shuffle.append(label[index])
+            label_3_count += 1
+        else:
+            continue
+    train_data_sample = [sentences_shuffle, vector_tfidf_shuffle, label_shuffle]
     train_batch_sample_manager = SampleBatchManager(train_data_sample, batch_size)
     return train_batch_sample_manager
