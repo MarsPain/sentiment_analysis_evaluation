@@ -90,9 +90,18 @@ class Main:
         content_train = self.train_data_df.iloc[:, 1]
         content_valid = self.validate_data_df.iloc[:, 1]
         logger.info("start seg train data")
-        self.string_train = seg_words(content_train, FLAGS.tokenize_style)  # 根据tokenize_style对评论字符串进行分词
+        if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
+            os.makedirs(FLAGS.pkl_dir)
+        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid.pkl")
+        if os.path.exists(string_train_valid):  # 若word_label_path已存在
+            with open(string_train_valid, 'rb') as f:
+                self.string_train, self.string_valid = pickle.load(f)
+        else:
+            self.string_train = seg_words(content_train, FLAGS.tokenize_style)  # 根据tokenize_style对评论字符串进行分词
+            self.string_valid = seg_words(content_valid, FLAGS.tokenize_style)
+            with open(string_train_valid, 'wb') as f:
+                pickle.dump([self.string_train, self.string_valid], f)
         print("训练集大小：", len(self.string_train))
-        self.string_valid = seg_words(content_valid, FLAGS.tokenize_style)
         logger.info("complete seg train data")
         self.columns = self.train_data_df.columns.values.tolist()
         # print(self.columns)
