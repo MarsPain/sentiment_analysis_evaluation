@@ -18,8 +18,8 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 # test_data_path = "../data/sentiment_analysis_testa.csv"
-# test_data_path = "../data/sentiment_analysis_validationset.csv"
-test_data_path = "result.csv"
+test_data_path = "../data/sentiment_analysis_validationset.csv"
+# test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
 models_dir = "ckpt"
@@ -136,12 +136,12 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    column = columns[4]  # 选择评价对象
+    column = columns[2]  # 选择评价对象
     model_path = os.path.join(models_dir, column)
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
     with tf.Session(config=tf_config) as sess:
-        predictions_all = []
+        logits_all = []
         text_cnn, saver = create_model(sess, index_to_word)
         saver.restore(sess, tf.train.latest_checkpoint(model_path))
         logger.info("compete load %s model and start predict" % column)
@@ -150,10 +150,13 @@ def predict():
             # print(len(test_x[0]), test_x[0])
             feed_dict = {text_cnn.input_x: test_x, text_cnn.features_vector: features_vector,
                          text_cnn.dropout_keep_prob: 1.0}
-            predictions = sess.run([text_cnn.predictions], feed_dict)
+            logits = sess.run([text_cnn.logits], feed_dict)
             # print("logits:", logits[0])
-            predictions_all.extend(list(predictions[0]))
-        # test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
+            for i in range(len(logits[0])):
+                logits_all.append(list(logits[0][i]))
+            # print(logits_all)
+        predictions_all = logits_to_predictions(logits_all)  # 将logits转化为predictions
+        test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
         for i in range(len(predictions_all)):
@@ -161,7 +164,7 @@ def predict():
         # print(predictions_all)
         test_data_df[column] = predictions_all
     logger.info("compete %s predict" % column)
-    test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
+    # test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
 
 
 def test_f_score_in_valid_data(predictions_all, columns, label_to_index):
@@ -240,6 +243,13 @@ def compute_confuse_matrix(predictions_all, label, small_value):
     r_3 = float(true_positive_3)/float(true_positive_3+false_negative_3+small_value)
     f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
     return f_0, f_1, f_2, f_3
+
+
+def logits_to_predictions(logits_all):
+    predictions_all = []
+    for i in range(len(logits_all)):
+        predictions_all.append(np.argmax(logits_all[i]))
+    return predictions_all
 
 if __name__ == '__main__':
     predict()
