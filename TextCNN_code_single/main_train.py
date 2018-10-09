@@ -20,7 +20,7 @@ from TextCNN_code_single.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_8", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_9", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -127,7 +127,7 @@ class Main:
         train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_3.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
-                self.train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
+                self.train_data, valid_data, self.label_weight_dict, self.least_label_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
             # 获取tfidf值并存储为tfidf字典
             if not os.path.exists(FLAGS.tfidf_path):
@@ -148,10 +148,10 @@ class Main:
             valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, FLAGS.max_len)
             # 从训练集中获取label_weight_dict（存储标签权重）
             self.label_weight_dict = get_labal_weight(self.train_data[2], self.columns, config.num_classes)
+            self.least_label_dict = get_least_label(self.train_data[2], self.columns)
             with open(train_valid_test, "wb") as f:
-                pickle.dump([self.train_data, valid_data, self.label_weight_dict], f)
-        # 获取每种评价对象的标签中数量最少的标签数量least_label_dict
-        self.least_label_dict = get_least_label(self.train_data[2], self.columns)
+                pickle.dump([self.train_data, valid_data, self.label_weight_dict, self.least_label_dict], f)
+        self.label_weight_dict = get_labal_weight(self.train_data[2], self.columns, config.num_classes)
         print("训练集大小：", len(self.train_data[0]), "验证集大小：", len(valid_data[0]))
         # 获取train、valid数据的batch生成类
         # self.train_batch_manager = BatchManager(self.train_data, int(FLAGS.batch_size))
@@ -214,7 +214,7 @@ class Main:
                     saver.save(sess, save_path, global_step=epoch)
                     best_acc = eval_accc
                     best_f1_score = f1_scoree
-                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 14 or epoch == 18)):
+                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 125 or epoch == 250 or epoch == 350 or epoch == 450)):
                     for i in range(1):  # decay learning rate if necessary.
                         print(i, "Going to decay learning rate by half.")
                         sess.run(text_cnn.learning_rate_decay_half_op)

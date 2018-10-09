@@ -159,7 +159,7 @@ def get_labal_weight(label_dict, columns, num_classes):
                 label_2 += 1
             else:
                 label_3 += 1
-        label_number_array = np.asarray([label_0, label_1, label_2, label_3])
+        # label_number_array = np.asarray([label_0, label_1, label_2, label_3])
         # label_weight_list = len_data / (num_classes * label_number_array)
         label_weight_list = [1, 1, 1, 1]    # 取消权重参数
         # print(column, label_number_array, label_weight_list)
@@ -376,9 +376,9 @@ def compute_confuse_matrix(logit, label, small_value):
 def afresh_sampling(train_data, least_label_dict, column_name, batch_size):
     sentences, feature_vector, label_dict = train_data
     label = label_dict[column_name]
-    sentences_shuffle = []
-    label_shuffle = []
-    vector_tfidf_shuffle = []
+    sentences_sample = []
+    feature_vector_sample = []
+    label_sample = []
     least_label_num = least_label_dict[column_name]
     len_data = len(sentences)
     label_0_count = 0
@@ -390,27 +390,37 @@ def afresh_sampling(train_data, least_label_dict, column_name, batch_size):
         if label_0_count == least_label_num and label_1_count == least_label_num and label_2_count == least_label_num and label_3_count == least_label_num:
             break
         if label[index] == 0 and label_0_count != least_label_num:
-            sentences_shuffle.append(sentences[index])
-            vector_tfidf_shuffle.append(feature_vector[index])
-            label_shuffle.append(label[index])
+            sentences_sample.append(sentences[index])
+            feature_vector_sample.append(feature_vector[index])
+            label_sample.append(label[index])
             label_0_count += 1
         elif label[index] == 1 and label_1_count != least_label_num:
-            sentences_shuffle.append(sentences[index])
-            vector_tfidf_shuffle.append(feature_vector[index])
-            label_shuffle.append(label[index])
+            sentences_sample.append(sentences[index])
+            feature_vector_sample.append(feature_vector[index])
+            label_sample.append(label[index])
             label_1_count += 1
         elif label[index] == 2 and label_2_count != least_label_num:
-            sentences_shuffle.append(sentences[index])
-            vector_tfidf_shuffle.append(feature_vector[index])
-            label_shuffle.append(label[index])
+            sentences_sample.append(sentences[index])
+            feature_vector_sample.append(feature_vector[index])
+            label_sample.append(label[index])
             label_2_count += 1
         elif label[index] == 3 and label_3_count != least_label_num:
-            sentences_shuffle.append(sentences[index])
-            vector_tfidf_shuffle.append(feature_vector[index])
-            label_shuffle.append(label[index])
+            sentences_sample.append(sentences[index])
+            feature_vector_sample.append(feature_vector[index])
+            label_sample.append(label[index])
             label_3_count += 1
         else:
             continue
-    train_data_sample = [sentences_shuffle, vector_tfidf_shuffle, label_shuffle]
-    train_batch_sample_manager = SampleBatchManager(train_data_sample, batch_size)
+    # print("各标签数量：", label_0_count, label_1_count, label_2_count, label_3_count)
+    # 对重采样的数据再次进行随机排序
+    sentences_sample_shuffle = []
+    vector_tfidf_sample_shuffle = []
+    label_sample_shuffle = []
+    random_perm_sample = np.random.permutation(4 * least_label_num)   # 对索引进行随机排序
+    for index in random_perm_sample:
+        sentences_sample_shuffle.append(sentences_sample[index])
+        vector_tfidf_sample_shuffle.append(feature_vector_sample[index])
+        label_sample_shuffle.append(label_sample[index])
+    train_data_sample_shuffle = [sentences_sample_shuffle, vector_tfidf_sample_shuffle, label_sample_shuffle]
+    train_batch_sample_manager = SampleBatchManager(train_data_sample_shuffle, batch_size)
     return train_batch_sample_manager
