@@ -157,10 +157,10 @@ def predict():
             for i in range(len(logits[0])):
                 logits_all.append(list(logits[0][i]))
             # print(logits_all)
-        predictions_all = logits_to_predictions(logits_all)  # 将logits转化为predictions
+        predictions_all = logits_to_predictions(logits_all, columns, label_to_index)  # 将logits转化为predictions
         # 对比predictions和真实label，如果不对，就打印logits到文件中
         write_predict_error_to_file(predictions_all, logits_all, columns, label_to_index, log_predict_error_dir)
-        test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
+        _ = test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
         for i in range(len(predictions_all)):
@@ -221,6 +221,7 @@ def test_f_score_in_valid_data(predictions_all, columns, label_to_index):
     f_0, f_1, f_2, f_3 = compute_confuse_matrix(predictions_all, label_valid, 0.00001)
     print("f_0, f_1, f_2, f_3:", f_0, f_1, f_2, f_3)
     print("f1_score:", (f_0 + f_1 + f_2 + f_3) / 4)
+    return (f_0 + f_1 + f_2 + f_3) / 4
 
 
 def compute_confuse_matrix(predictions_all, label, small_value):
@@ -285,16 +286,47 @@ def compute_confuse_matrix(predictions_all, label, small_value):
     return f_0, f_1, f_2, f_3
 
 
-def logits_to_predictions(logits_all):
+def logits_to_predictions(logits_all, columns, label_to_index):
     predictions_all = []
-    for i in range(len(logits_all)):
-        logits_list = logits_all[i]
-        label_predict = np.argmax(logits_list)
-        if (logits_list[1]-logits_list[3]) < 2 and (logits_list[0]+logits_list[2]) < 1.8 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
-            label_predict = 3
-        elif (logits_list[0]-logits_list[2] < 4) and (logits_list[3]-logits_list[1]) < 1 and logits_list[3] < 1 and logits_list[1] < 0 and label_predict == 0:  # 减少将标签1错误地识别为0的数量
-            label_predict = 1
-        predictions_all.append(label_predict)
+    max_f1 = 0
+    best_param = [0, 0, 0, 0]
+    param_list_1 = []
+    for i in range(3):
+        for j in range(1, 10):
+            param_list_1.append(i + round(0.1 * j, 2))
+    param_list_2 = []
+    for i in range(1, 3):
+        for j in range(1, 10):
+            param_list_2.append(i + round(0.1 * j, 2))
+    param_list_3 = []
+    for i in range(3, 6):
+        for j in range(1, 10):
+            param_list_3.append(i + round(0.1 * j, 2))
+    param_list_4 = []
+    for i in range(1, 3):
+        for j in range(1, 10):
+            param_list_4.append(i + round(0.1 * j, 2))
+    for param_1 in param_list_1:
+        for param_2 in param_list_2:
+            for param_3 in param_list_3:
+                for param_4 in param_list_4:
+                    predictions_all = []
+                    for i in range(len(logits_all)):
+                        logits_list = logits_all[i]
+                        label_predict = np.argmax(logits_list)
+                        if (logits_list[1]-logits_list[3]) < param_1 and (logits_list[0]+logits_list[2]) < param_2 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
+                            label_predict = 3
+                        elif (logits_list[0]-logits_list[2] < param_3) and (logits_list[3]-logits_list[1]) < param_4 and logits_list[3] < 1 and logits_list[1] < 0 and label_predict == 0:  # 减少将标签1错误地识别为0的数量
+                            label_predict = 1
+                        predictions_all.append(label_predict)
+                    f1_score = test_f_score_in_valid_data(predictions_all, columns, label_to_index)
+                    if max_f1 < f1_score:
+                        max_f1 = f1_score
+                        best_param = [param_1, param_2, param_3, param_4]
+                        print("max_f1:", max_f1)
+                        print("best_param:", " ".join(str(param) for param in best_param))
+    print("max_f1:", max_f1)
+    print("best_param:", " ".join(str(param) for param in best_param))
     return predictions_all
 
 if __name__ == '__main__':

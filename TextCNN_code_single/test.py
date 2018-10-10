@@ -43,3 +43,11 @@ import pandas as pd
 
 # import cmath
 # print(cmath.sqrt(8627200))
+
+# l = [j+round(float(0.1*i), 2) for i in range(1, 10) for j in range(3)]
+# print(l)
+# l = []
+# for i in range(3):
+#     for j in range(1, 10):
+#         l.append(i + round(0.1 * j, 2))
+# print(l)
