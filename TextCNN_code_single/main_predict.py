@@ -3,6 +3,7 @@ import logging
 from sklearn.externals import joblib
 import pickle
 import numpy as np
+import pandas as pd
 import os
 import tensorflow as tf
 import math
@@ -26,7 +27,7 @@ models_dir = "ckpt"
 word_label_dict = "pkl/word_label_dict.pkl"
 tfidf_path = "data/tfidf.txt"
 word2vec_model_path = "data/word2vec_word_model.txt"
-log_predict_error_path = "data/log_predict_error.txt"
+log_predict_error_dir = "error_log"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
 logger = logging.getLogger(__name__)
@@ -158,7 +159,7 @@ def predict():
             # print(logits_all)
         predictions_all = logits_to_predictions(logits_all)  # 将logits转化为predictions
         # 对比predictions和真实label，如果不对，就打印logits到文件中
-        write_predict_error_to_file(predictions_all, logits_all, columns, label_to_index, log_predict_error_path)
+        write_predict_error_to_file(predictions_all, logits_all, columns, label_to_index, log_predict_error_dir)
         test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
@@ -170,20 +171,31 @@ def predict():
     # test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
 
 
-def write_predict_error_to_file(predictions_all, logits_all, columns, label_to_index, path):
+def write_predict_error_to_file(predictions_all, logits_all, columns, label_to_index, error_dir):
     validate_data_df = load_data_from_csv(test_data_path)
     label_valid_dict = {}
     for column in columns[2:]:
         label_valid = list(validate_data_df[column].iloc[:])
         label_valid_dict[column] = label_valid
-    label_valid = label_valid_dict[columns[2]]
+    column_name = columns[2]
+    label_valid = label_valid_dict[column_name]
     for i in range(len(predictions_all)):
         label_valid[i] = label_to_index[label_valid[i]]  # 获取真实的标签
-    with open(path, "w", encoding="utf-8") as f:
-        for i in range(len(predictions_all)):
-            if label_valid[i] != predictions_all[i]:
-                f.write(str(label_valid[i]) + "\t" + str(predictions_all[i]) + "\t" +
-                        "、".join(str(num_float) for num_float in logits_all[i]) + "\n")
+    label_valid_list = []
+    predictions_all_list = []
+    logits_all_list = []
+    error_path = os.path.join(error_dir, column_name + ".csv")
+    for i in range(len(predictions_all)):
+        if label_valid[i] != predictions_all[i]:
+            label_valid_list.append(label_valid[i])
+            predictions_all_list.append(predictions_all[i])
+            logits_all_list.append("、".join(str(num_float) for num_float in logits_all[i]))
+    label_valid_array = pd.Series(label_valid_list, name="正确标签")
+    predictions_all_array = pd.Series(predictions_all_list, name="错误标签")
+    logits_all_array = pd.Series(logits_all_list, name="置信度")
+    error_log_array_list = [label_valid_array, predictions_all_array, logits_all_array]
+    error_log_df = pd.concat(error_log_array_list, axis=1)
+    error_log_df.to_csv(error_path, encoding="utf-8")
 
 
 def test_f_score_in_valid_data(predictions_all, columns, label_to_index):
