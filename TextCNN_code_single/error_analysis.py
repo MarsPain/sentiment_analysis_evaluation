@@ -19,9 +19,16 @@ def load_data():
 
 
 def anayasis(data):
-    pass
+    # print(data.info())
+    data_group_label = data.groupby(["正确标签"])
+    print(data_group_label.count())
+    data_group_label = data.groupby(["正确标签", "错误标签"])
+    print(data_group_label.count())
+    print(data_group_label.mean())
+    # a = data.loc[data["正确标签"] == 3]
+    # print(a)
 
 
 if __name__ == "__main__":
-    load_data()
-    anayasis()
+    data_df = load_data()
+    anayasis(data_df)
