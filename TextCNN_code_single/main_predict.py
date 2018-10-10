@@ -328,9 +328,9 @@ def logits_to_predictions(logits_all, columns, label_to_index):
     column_name = columns[column_index]
     # location_traffic_convenience的置信度调整
     if column_name == "location_traffic_convenience":
-        param_1 = 0.7
+        param_1 = 1.2
         param_2 = 1.1
-        param_3 = 5.3
+        param_3 = 4.3
         predictions_all = []
         for i in range(len(logits_all)):
             logits_list = logits_all[i]
