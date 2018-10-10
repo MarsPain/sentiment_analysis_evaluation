@@ -183,17 +183,26 @@ def write_predict_error_to_file(predictions_all, logits_all, columns, label_to_i
         label_valid[i] = label_to_index[label_valid[i]]  # 获取真实的标签
     label_valid_list = []
     predictions_all_list = []
-    logits_all_list = []
+    logit_0_all_list = []
+    logit_1_all_list = []
+    logit_2_all_list = []
+    logit_3_all_list = []
     error_path = os.path.join(error_dir, column_name + ".csv")
     for i in range(len(predictions_all)):
         if label_valid[i] != predictions_all[i]:
             label_valid_list.append(label_valid[i])
             predictions_all_list.append(predictions_all[i])
-            logits_all_list.append("、".join(str(num_float) for num_float in logits_all[i]))
+            logit_0_all_list.append(logits_all[i][0])
+            logit_1_all_list.append(logits_all[i][1])
+            logit_2_all_list.append(logits_all[i][2])
+            logit_3_all_list.append(logits_all[i][3])
     label_valid_array = pd.Series(label_valid_list, name="正确标签")
     predictions_all_array = pd.Series(predictions_all_list, name="错误标签")
-    logits_all_array = pd.Series(logits_all_list, name="置信度")
-    error_log_array_list = [label_valid_array, predictions_all_array, logits_all_array]
+    logit_0_all_array = pd.Series(logit_0_all_list, name="标签0的置信度")
+    logit_1_all_array = pd.Series(logit_1_all_list, name="标签1的置信度")
+    logit_2_all_array = pd.Series(logit_2_all_list, name="标签2的置信度")
+    logit_3_all_array = pd.Series(logit_3_all_list, name="标签3的置信度")
+    error_log_array_list = [label_valid_array, predictions_all_array, logit_0_all_array, logit_1_all_array, logit_2_all_array, logit_3_all_array]
     error_log_df = pd.concat(error_log_array_list, axis=1)
     error_log_df.to_csv(error_path, encoding="utf-8")
 
