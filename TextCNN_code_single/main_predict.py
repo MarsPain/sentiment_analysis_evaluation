@@ -187,7 +187,7 @@ def write_predict_error_to_file(predictions_all, logits_all, columns, label_to_i
     logit_1_all_list = []
     logit_2_all_list = []
     logit_3_all_list = []
-    error_path = os.path.join(error_dir, column_name + ".csv")
+    error_path = os.path.join(error_dir, column_name + "2.csv")
     for i in range(len(predictions_all)):
         if label_valid[i] != predictions_all[i]:
             label_valid_list.append(label_valid[i])
@@ -289,13 +289,12 @@ def logits_to_predictions(logits_all):
     predictions_all = []
     for i in range(len(logits_all)):
         logits_list = logits_all[i]
-        if (logits_list[1]-logits_list[3]) < 2 and logits_list[0] < 1 and logits_list[2] < 1:   # 减少将标签3错误地识别为1的数量
-            logits_list[1] = -100
-            predictions_all.append(3)
-            print("YES!!!!!!!!!!!")
-        else:
-            predictions_all.append(np.argmax(logits_list))
-        # predictions_all.append(np.argmax(logits_list))
+        label_predict = np.argmax(logits_list)
+        if (logits_list[1]-logits_list[3]) < 2 and (logits_list[0]+logits_list[2]) < 1.8 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
+            label_predict = 3
+        elif (logits_list[0]-logits_list[2] < 4) and (logits_list[3]-logits_list[1]) < 1 and logits_list[3] < 1 and logits_list[1] < 0 and label_predict == 0:  # 减少将标签1错误地识别为0的数量
+            label_predict = 1
+        predictions_all.append(label_predict)
     return predictions_all
 
 if __name__ == '__main__':

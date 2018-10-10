@@ -13,7 +13,7 @@ def load_data():
     validate_data_df = load_data_from_csv(valid_data_path)
     columns = validate_data_df.columns.tolist()
     column_name = columns[2]
-    error_path = os.path.join(log_predict_error_dir, column_name + ".csv")
+    error_path = os.path.join(log_predict_error_dir, column_name + "2.csv")
     error_log_df = load_data_from_csv(error_path)
     return error_log_df
 
