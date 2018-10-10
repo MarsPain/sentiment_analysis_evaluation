@@ -37,3 +37,9 @@ import pandas as pd
 # value = np.bincount(y)
 # print(type(value), value)
 # print(10 / (2 * value))
+
+# l = [1, 2, 3]
+# print("、".join(str(num) for num in l))
+
+# import cmath
+# print(cmath.sqrt(8627200))
