@@ -13,7 +13,7 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 
-stopwords_path = "data/stop_words.txt"
+stopwords_path = "data/stop_words_2.txt"
 
 
 def seg_words(contents, tokenize_style):
@@ -21,7 +21,7 @@ def seg_words(contents, tokenize_style):
     if tokenize_style == "word":
         stopwords = stopwordslist(stopwords_path)
         stopwords_set = set(stopwords)
-        stopwords_set = set()
+        # stopwords_set = set()
         for content in contents:
             content = re.sub(" ", "，", content.strip())
             # print(content)

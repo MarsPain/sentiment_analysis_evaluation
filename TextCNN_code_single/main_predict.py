@@ -23,10 +23,10 @@ test_data_path = "../data/sentiment_analysis_validationset.csv"
 # test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
-models_dir = "ckpt"
+models_dir = "ckpt_3"
 word_label_dict = "pkl/word_label_dict.pkl"
 tfidf_path = "data/tfidf.txt"
-word2vec_model_path = "data/word2vec_word_model.txt"
+word2vec_model_path = "data/word2vec_word_model_sg.txt"
 log_predict_error_dir = "error_log"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
@@ -269,29 +269,30 @@ def compute_confuse_matrix(predictions_all, label, small_value):
             false_negative_3 += 1
     p_0 = float(true_positive_0)/float(true_positive_0+false_positive_0+small_value)
     r_0 = float(true_positive_0)/float(true_positive_0+false_negative_0+small_value)
-    print("标签0的预测情况：", true_positive_0, false_positive_0, false_negative_0, p_0, r_0)
+    # print("标签0的预测情况：", true_positive_0, false_positive_0, false_negative_0, p_0, r_0)
     f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
     p_1 = float(true_positive_1)/float(true_positive_1+false_positive_1+small_value)
     r_1 = float(true_positive_1)/float(true_positive_1+false_negative_1+small_value)
-    print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1, p_1, r_1)
+    # print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1, p_1, r_1)
     f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
     p_2 = float(true_positive_2)/float(true_positive_2+false_positive_2+small_value)
     r_2 = float(true_positive_2)/float(true_positive_2+false_negative_2+small_value)
-    print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2, p_2, r_2)
+    # print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2, p_2, r_2)
     f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
     p_3 = float(true_positive_3)/float(true_positive_3+false_positive_3+small_value)
     r_3 = float(true_positive_3)/float(true_positive_3+false_negative_3+small_value)
-    print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3, p_3, r_3)
+    # print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3, p_3, r_3)
     f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
     return f_0, f_1, f_2, f_3
 
 
 def logits_to_predictions(logits_all, columns, label_to_index):
     predictions_all = []
+    # 自主搜索最优参数用于调整置信度
     max_f1 = 0
     best_param = [0, 0, 0, 0]
     param_list_1 = []
-    for i in range(3):
+    for i in range(1, 3):
         for j in range(1, 10):
             param_list_1.append(i + round(0.1 * j, 2))
     param_list_2 = []
@@ -299,34 +300,46 @@ def logits_to_predictions(logits_all, columns, label_to_index):
         for j in range(1, 10):
             param_list_2.append(i + round(0.1 * j, 2))
     param_list_3 = []
-    for i in range(3, 6):
+    for i in range(1, 6):
         for j in range(1, 10):
             param_list_3.append(i + round(0.1 * j, 2))
-    param_list_4 = []
-    for i in range(1, 3):
-        for j in range(1, 10):
-            param_list_4.append(i + round(0.1 * j, 2))
     for param_1 in param_list_1:
         for param_2 in param_list_2:
             for param_3 in param_list_3:
-                for param_4 in param_list_4:
-                    predictions_all = []
-                    for i in range(len(logits_all)):
-                        logits_list = logits_all[i]
-                        label_predict = np.argmax(logits_list)
-                        if (logits_list[1]-logits_list[3]) < param_1 and (logits_list[0]+logits_list[2]) < param_2 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
-                            label_predict = 3
-                        elif (logits_list[0]-logits_list[2] < param_3) and (logits_list[3]-logits_list[1]) < param_4 and logits_list[3] < 1 and logits_list[1] < 0 and label_predict == 0:  # 减少将标签1错误地识别为0的数量
-                            label_predict = 1
-                        predictions_all.append(label_predict)
-                    f1_score = test_f_score_in_valid_data(predictions_all, columns, label_to_index)
-                    if max_f1 < f1_score:
-                        max_f1 = f1_score
-                        best_param = [param_1, param_2, param_3, param_4]
-                        print("max_f1:", max_f1)
-                        print("best_param:", " ".join(str(param) for param in best_param))
+                predictions_all = []
+                for i in range(len(logits_all)):
+                    logits_list = logits_all[i]
+                    label_predict = np.argmax(logits_list)
+                    if (logits_list[1]-logits_list[3]) < param_1 and (logits_list[0]+logits_list[2]) < param_2 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
+                        label_predict = 3
+                    if (logits_list[0]-logits_list[2] < param_3) and label_predict == 0:  # 减少将标签1错误地识别为0的数量
+                        label_predict = 1
+                    predictions_all.append(label_predict)
+                f1_score = test_f_score_in_valid_data(predictions_all, columns, label_to_index)
+                if max_f1 < f1_score:
+                    max_f1 = f1_score
+                    best_param = [param_1, param_2, param_3]
+                    print("max_f1:", max_f1)
+                    print("best_param:", " ".join(str(param) for param in best_param))
     print("max_f1:", max_f1)
     print("best_param:", " ".join(str(param) for param in best_param))
+    # 调整置信度
+    column_index = 2
+    column_name = columns[column_index]
+    # location_traffic_convenience的置信度调整
+    if column_name == "location_traffic_convenience":
+        param_1 = 0.7
+        param_2 = 1.1
+        param_3 = 5.3
+        predictions_all = []
+        for i in range(len(logits_all)):
+            logits_list = logits_all[i]
+            label_predict = np.argmax(logits_list)
+            if (logits_list[1]-logits_list[3]) < param_1 and (logits_list[0]+logits_list[2]) < param_2 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
+                label_predict = 3
+            if (logits_list[0]-logits_list[2] < param_3) and label_predict == 0:  # 减少将标签1错误地识别为0的数量
+                label_predict = 1
+            predictions_all.append(label_predict)
     return predictions_all
 
 if __name__ == '__main__':
