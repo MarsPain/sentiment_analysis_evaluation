@@ -288,7 +288,14 @@ def compute_confuse_matrix(predictions_all, label, small_value):
 def logits_to_predictions(logits_all):
     predictions_all = []
     for i in range(len(logits_all)):
-        predictions_all.append(np.argmax(logits_all[i]))
+        logits_list = logits_all[i]
+        if (logits_list[1]-logits_list[3]) < 2 and logits_list[0] < 1 and logits_list[2] < 1:   # 减少将标签3错误地识别为1的数量
+            logits_list[1] = -100
+            predictions_all.append(3)
+            print("YES!!!!!!!!!!!")
+        else:
+            predictions_all.append(np.argmax(logits_list))
+        # predictions_all.append(np.argmax(logits_list))
     return predictions_all
 
 if __name__ == '__main__':
