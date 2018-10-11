@@ -12,6 +12,7 @@ from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf
 from TextCNN_code_single.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code_single.model import TextCNN
+from TextCNN_code_single.confidence_adjust import automatic_search, adjust_confidence
 
 PAD_ID = 0
 UNK_ID = 1
@@ -157,10 +158,10 @@ def predict():
             for i in range(len(logits[0])):
                 logits_all.append(list(logits[0][i]))
             # print(logits_all)
-        predictions_all = logits_to_predictions(logits_all, columns, label_to_index)  # 将logits转化为predictions
+        predictions_all = logits_to_predictions(logits_all, column, label_to_index)  # 将logits转化为predictions
         # 对比predictions和真实label，如果不对，就打印logits到文件中
-        write_predict_error_to_file(predictions_all, logits_all, columns, label_to_index, log_predict_error_dir)
-        _ = test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
+        write_predict_error_to_file(predictions_all, logits_all, column, label_to_index, log_predict_error_dir)
+        _ = test_f_score_in_valid_data(predictions_all, column, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
         for i in range(len(predictions_all)):
@@ -171,14 +172,9 @@ def predict():
     # test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
 
 
-def write_predict_error_to_file(predictions_all, logits_all, columns, label_to_index, error_dir):
+def write_predict_error_to_file(predictions_all, logits_all, column_name, label_to_index, error_dir):
     validate_data_df = load_data_from_csv(test_data_path)
-    label_valid_dict = {}
-    for column in columns[2:]:
-        label_valid = list(validate_data_df[column].iloc[:])
-        label_valid_dict[column] = label_valid
-    column_name = columns[2]
-    label_valid = label_valid_dict[column_name]
+    label_valid = list(validate_data_df[column_name].iloc[:])
     for i in range(len(predictions_all)):
         label_valid[i] = label_to_index[label_valid[i]]  # 获取真实的标签
     label_valid_list = []
@@ -207,13 +203,9 @@ def write_predict_error_to_file(predictions_all, logits_all, columns, label_to_i
     error_log_df.to_csv(error_path, encoding="utf-8")
 
 
-def test_f_score_in_valid_data(predictions_all, columns, label_to_index):
+def test_f_score_in_valid_data(predictions_all, column_name, label_to_index):
     validate_data_df = load_data_from_csv(test_data_path)
-    label_valid_dict = {}
-    for column in columns[2:]:
-        label_valid = list(validate_data_df[column].iloc[:])
-        label_valid_dict[column] = label_valid
-    label_valid = label_valid_dict[columns[2]]
+    label_valid = list(validate_data_df[column_name].iloc[:])
     for i in range(len(predictions_all)):
         label_valid[i] = label_to_index[label_valid[i]]
     # print("predictions_all:", len(predictions_all), predictions_all)
@@ -286,60 +278,17 @@ def compute_confuse_matrix(predictions_all, label, small_value):
     return f_0, f_1, f_2, f_3
 
 
-def logits_to_predictions(logits_all, columns, label_to_index):
+def logits_to_predictions(logits_all, column_name, label_to_index):
+    # 基于默认置信度获取预测值
     predictions_all = []
+    for i in range(len(logits_all)):
+        logits_list = logits_all[i]
+        label_predict = np.argmax(logits_list)
+        predictions_all.append(label_predict)
     # 自主搜索最优参数用于调整置信度
-    max_f1 = 0
-    best_param = [0, 0, 0, 0]
-    param_list_1 = []
-    for i in range(1, 3):
-        for j in range(1, 10):
-            param_list_1.append(i + round(0.1 * j, 2))
-    param_list_2 = []
-    for i in range(1, 3):
-        for j in range(1, 10):
-            param_list_2.append(i + round(0.1 * j, 2))
-    param_list_3 = []
-    for i in range(1, 6):
-        for j in range(1, 10):
-            param_list_3.append(i + round(0.1 * j, 2))
-    for param_1 in param_list_1:
-        for param_2 in param_list_2:
-            for param_3 in param_list_3:
-                predictions_all = []
-                for i in range(len(logits_all)):
-                    logits_list = logits_all[i]
-                    label_predict = np.argmax(logits_list)
-                    if (logits_list[1]-logits_list[3]) < param_1 and (logits_list[0]+logits_list[2]) < param_2 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
-                        label_predict = 3
-                    if (logits_list[0]-logits_list[2] < param_3) and label_predict == 0:  # 减少将标签1错误地识别为0的数量
-                        label_predict = 1
-                    predictions_all.append(label_predict)
-                f1_score = test_f_score_in_valid_data(predictions_all, columns, label_to_index)
-                if max_f1 < f1_score:
-                    max_f1 = f1_score
-                    best_param = [param_1, param_2, param_3]
-                    print("max_f1:", max_f1)
-                    print("best_param:", " ".join(str(param) for param in best_param))
-    print("max_f1:", max_f1)
-    print("best_param:", " ".join(str(param) for param in best_param))
-    # 调整置信度
-    column_index = 2
-    column_name = columns[column_index]
-    # location_traffic_convenience的置信度调整
-    if column_name == "location_traffic_convenience":
-        param_1 = 1.2
-        param_2 = 1.1
-        param_3 = 4.3
-        predictions_all = []
-        for i in range(len(logits_all)):
-            logits_list = logits_all[i]
-            label_predict = np.argmax(logits_list)
-            if (logits_list[1]-logits_list[3]) < param_1 and (logits_list[0]+logits_list[2]) < param_2 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
-                label_predict = 3
-            if (logits_list[0]-logits_list[2] < param_3) and label_predict == 0:  # 减少将标签1错误地识别为0的数量
-                label_predict = 1
-            predictions_all.append(label_predict)
+    # automatic_search(logits_all, column_name, label_to_index, test_data_path)
+    # 调整置信度后再获取预测值
+    # predictions_all = adjust_confidence(logits_all, column_name)
     return predictions_all
 
 if __name__ == '__main__':
