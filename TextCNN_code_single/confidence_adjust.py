@@ -8,15 +8,15 @@ def automatic_search(logits_all, column_name, label_to_index, valid_data_path):
     if column_name == "location_traffic_convenience":
         best_param = [0, 0, 0, 0]
         param_list_1 = []
-        for i in range(1, 3):
+        for i in range(0, 3):
             for j in range(1, 10):
                 param_list_1.append(i + round(0.1 * j, 2))
         param_list_2 = []
-        for i in range(1, 3):
+        for i in range(0, 3):
             for j in range(1, 10):
                 param_list_2.append(i + round(0.1 * j, 2))
         param_list_3 = []
-        for i in range(1, 6):
+        for i in range(0, 6):
             for j in range(1, 10):
                 param_list_3.append(i + round(0.1 * j, 2))
         for param_1 in param_list_1:
@@ -122,7 +122,7 @@ def adjust_confidence(logits_all, column_name):
     # location_traffic_convenience的置信度调整
     if column_name == "location_traffic_convenience":
         param_1 = 1.2
-        param_2 = 1.1
+        param_2 = 0.1
         param_3 = 4.3
         predictions_all = []
         for i in range(len(logits_all)):

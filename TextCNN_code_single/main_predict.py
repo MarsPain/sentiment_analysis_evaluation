@@ -12,6 +12,7 @@ from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf
 from TextCNN_code_single.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code_single.model import TextCNN
+from TextCNN_code_single.confidence_adjust import adjust_confidence, automatic_search
 
 PAD_ID = 0
 UNK_ID = 1
@@ -138,7 +139,7 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    column = columns[3]  # 选择评价对象
+    column = columns[2]  # 选择评价对象
     model_path = os.path.join(models_dir, column)
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
@@ -183,7 +184,7 @@ def write_predict_error_to_file(predictions_all, logits_all, column_name, label_
     logit_1_all_list = []
     logit_2_all_list = []
     logit_3_all_list = []
-    error_path = os.path.join(error_dir, column_name + "2.csv")
+    error_path = os.path.join(error_dir, column_name + ".csv")
     for i in range(len(predictions_all)):
         if label_valid[i] != predictions_all[i]:
             label_valid_list.append(label_valid[i])
