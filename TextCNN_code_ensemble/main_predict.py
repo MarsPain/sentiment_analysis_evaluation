@@ -139,16 +139,16 @@ def predict():
     # model predict
     logger.info("start predict test data")
     column = columns[config.column_index]  # 选择评价对象
-    model_path = os.path.join(models_dir, column)
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
     with tf.Session(config=tf_config) as sess:
-        predictions_all = []
-        text_cnn, saver = create_model(sess, index_to_word)
-        saver.restore(sess, tf.train.latest_checkpoint(model_path))
         logger.info("compete load %s model and start predict" % column)
         predictions_all_list = []
         for model_index in range(config.num_models):
+            predictions_all = []
+            text_cnn, saver = create_model(sess, index_to_word)
+            model_path = os.path.join(models_dir, column + "/" + str(model_index))
+            saver.restore(sess, tf.train.latest_checkpoint(model_path))
             for batch in test_batch_manager.iter_batch(shuffle=False):
                 test_x, features_vector = batch
                 # print(len(test_x[0]), test_x[0])
