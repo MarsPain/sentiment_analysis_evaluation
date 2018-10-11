@@ -186,6 +186,7 @@ class Main:
 
     def train(self, sess, column_name):
         for model_index in range(config.num_models):
+        # for model_index in [3, 4]:
             sess.run(tf.global_variables_initializer())
             print("%s 的第 %s 个模型" % (column_name, str(model_index)))
             train_batch_sample_manager = afresh_sampling(self.train_data, self.least_label_dict, column_name, int(FLAGS.batch_size))

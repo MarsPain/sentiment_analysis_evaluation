@@ -145,6 +145,7 @@ def predict():
         logger.info("compete load %s model and start predict" % column)
         predictions_all_list = []
         for model_index in range(config.num_models):
+        # for model_index in [5, 6, 7, 8, 9]:
             predictions_all = []
             text_cnn, saver = create_model(sess, index_to_word)
             model_path = os.path.join(models_dir, column + "/" + str(model_index))
@@ -177,12 +178,13 @@ def predictions_vote(predictions_all_list):
     vote_result_list = []
     for i in range(len_data):
         prediction_0, prediction_1, prediction_2, prediction_3 = 0, 0, 0, 0
-        for j in range(config.num_models):
-            if predictions_all_list[j][i] == 0:
+        for index in range(config.num_models):
+        # for index, _ in enumerate([3, 10]):
+            if predictions_all_list[index][i] == 0:
                 prediction_0 += 1
-            elif predictions_all_list[j][i] == 1:
+            elif predictions_all_list[index][i] == 1:
                 prediction_1 += 1
-            elif predictions_all_list[j][i] == 1:
+            elif predictions_all_list[index][i] == 1:
                 prediction_2 += 1
             else:
                 prediction_3 += 1
