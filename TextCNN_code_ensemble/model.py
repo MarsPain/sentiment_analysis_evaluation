@@ -23,7 +23,8 @@ class TextCNN:
         self.clip_gradients = config.clip_gradients
         self.top_k = config.top_k
         # 设置占位符和变量
-        self.Embedding = tf.get_variable("Embedding", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
+        with tf.variable_scope("Embedding_Scope", reuse=tf.AUTO_REUSE):
+            self.Embedding = tf.get_variable("Embedding", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
         self.input_x = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x1")  # sentences
         # print("input_x:", self.input_x)
         self.features_vector = tf.placeholder(tf.float32, [None, self.sequence_length], name="features_vector")  # features_vector
@@ -59,7 +60,7 @@ class TextCNN:
             logits = tf.layers.dense(h, self.num_classes, use_bias=False)
         return logits
 
-    def conv_layers(self, input_x, name_scope, reuse_flag=False):
+    def conv_layers(self, input_x, name_scope, reuse_flag=tf.AUTO_REUSE):
         embedded_words = tf.nn.embedding_lookup(self.Embedding, input_x)    # [None,sentence_length,embed_size]
         # [None,sentence_length,embed_size,1] expand dimension so meet input requirement of 2d-conv
         sentence_embeddings_expanded = tf.expand_dims(embedded_words, -1)   # 词向量可以是多通道的
@@ -91,7 +92,7 @@ class TextCNN:
         return h
 
     def additive_attention(self, x, dimension_size, vairable_scope):
-        with tf.variable_scope(vairable_scope):
+        with tf.variable_scope(vairable_scope, reuse=tf.AUTO_REUSE):
             g = tf.get_variable("attention_g", initializer=tf.sqrt(1.0 / self.hidden_size))
             b = tf.get_variable("bias", shape=[dimension_size], initializer=tf.zeros_initializer)
             x = tf.layers.dense(x, dimension_size)  # [batch_size,hidden_size]

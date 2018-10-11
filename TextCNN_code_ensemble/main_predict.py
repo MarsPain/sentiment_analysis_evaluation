@@ -18,8 +18,8 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 # test_data_path = "../data/sentiment_analysis_testa.csv"
-# test_data_path = "../data/sentiment_analysis_validationset.csv"
-test_data_path = "result.csv"
+test_data_path = "../data/sentiment_analysis_validationset.csv"
+# test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
 models_dir = "ckpt"
@@ -136,7 +136,7 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    column = columns[4]  # 选择评价对象
+    column = columns[2]  # 选择评价对象
     model_path = os.path.join(models_dir, column)
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True

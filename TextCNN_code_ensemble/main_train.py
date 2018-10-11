@@ -27,7 +27,7 @@ tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf val
 tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_trainingset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("test_data_path", "../data/sentiment_analysis_testa.csv", "path of traning data.")
-tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.txt", "word2vec's embedding for word")
+tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model.txt", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for char")
@@ -88,8 +88,8 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
-        content_train = self.train_data_df.iloc[:, 1]
-        content_valid = self.validate_data_df.iloc[:, 1]
+        content_train = self.train_data_df.iloc[:10000, 1]
+        content_valid = self.validate_data_df.iloc[:1500, 1]
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
@@ -109,11 +109,11 @@ class Main:
         logger.info("load label data")
         self.label_train_dict = {}
         for column in self.columns[2:]:
-            label_train = list(self.train_data_df[column].iloc[:])
+            label_train = list(self.train_data_df[column].iloc[:10000])
             self.label_train_dict[column] = label_train
         self.label_valid_dict = {}
         for column in self.columns[2:]:
-            label_valid = list(self.validate_data_df[column].iloc[:])
+            label_valid = list(self.validate_data_df[column].iloc[:1500])
             self.label_valid_dict[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
@@ -185,14 +185,15 @@ class Main:
         logger.info("complete all models' train")
 
     def train(self, sess, column_name):
-        text_cnn, saver = self.create_model(sess, column_name)
-        curr_epoch = sess.run(text_cnn.epoch_step)
-        iteration = 0
-        best_acc = 0.50
-        best_f1_score = 0.20
-        for model_index in range(1):
+        for model_index in range(5):
+            sess.run(tf.global_variables_initializer())
             print("%s 的第 %s 个模型" % (column_name, str(model_index)))
             train_batch_sample_manager = afresh_sampling(self.train_data, self.least_label_dict, column_name, int(FLAGS.batch_size))
+            text_cnn, saver = self.create_model(sess, column_name, model_index)
+            curr_epoch = sess.run(text_cnn.epoch_step)
+            iteration = 0
+            best_acc = 0.50
+            best_f1_score = 0.20
             print("训练集批次数量：", train_batch_sample_manager.len_data)
             for epoch in range(curr_epoch, FLAGS.num_epochs):
                 loss, eval_acc, counter = 0.0, 0.0, 0
@@ -229,11 +230,11 @@ class Main:
                             print(i, "Going to decay learning rate by half.")
                             sess.run(text_cnn.learning_rate_decay_half_op)
 
-    def create_model(self, sess, column_name):
+    def create_model(self, sess, column_name, model_index):
         text_cnn = TextCNN()
         saver = tf.train.Saver()
-        model_save_dir = FLAGS.ckpt_dir + "/" + column_name
-        if os.path.exists(model_save_dir+"checkpoint"):
+        model_save_dir = FLAGS.ckpt_dir + "/" + column_name + "/" + str(model_index)
+        if os.path.exists(model_save_dir):
             print("Restoring Variables from Checkpoint.")
             saver.restore(sess, tf.train.latest_checkpoint(model_save_dir))
             if FLAGS.decay_lr_flag:
