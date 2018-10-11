@@ -5,7 +5,7 @@ import os
 num_models = 10
 column_index = 2
 num_classes = 4
-num_epochs = 30
+num_epochs = 15
 batch_size = 16
 vocab_size = 210000
 tokenize_style = "word"

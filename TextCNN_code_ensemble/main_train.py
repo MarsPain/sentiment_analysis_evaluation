@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_integer("num_filters", config.num_filters, "number of filter
 tf.app.flags.DEFINE_integer("max_len", config.max_len, "max sentence length. length should be divide by 3,""which is used by k max pooling.")
 tf.app.flags.DEFINE_integer("top_k", config.top_k, "value of top k for k-max polling")
 tf.app.flags.DEFINE_float("learning_rate", config.learning_rate, "learning rate")  # 0.001
-tf.app.flags.DEFINE_boolean("decay_lr_flag", False, "whether manally decay lr")
+tf.app.flags.DEFINE_boolean("decay_lr_flag", True, "whether manally decay lr")
 tf.app.flags.DEFINE_float("clip_gradients", config.clip_gradients, "clip_gradients")
 tf.app.flags.DEFINE_integer("validate_every", config.validate_every, "Validate every validate_every epochs.")
 tf.app.flags.DEFINE_float("dropout_keep_prob", config.dropout_keep_prob, "dropout keep probability")
@@ -237,8 +237,8 @@ class Main:
         if os.path.exists(model_save_dir):
             print("Restoring Variables from Checkpoint.")
             saver.restore(sess, tf.train.latest_checkpoint(model_save_dir))
-            if FLAGS.decay_lr_flag:
-                for i in range(2):  # decay learning rate if necessary.
+            if False:
+                for i in range(1):  # decay learning rate if necessary.
                     print(i, "Going to decay learning rate by half.")
                     sess.run(text_cnn.learning_rate_decay_half_op)
         else:
