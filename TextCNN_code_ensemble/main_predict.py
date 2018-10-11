@@ -169,6 +169,7 @@ def predict():
 
 
 def predictions_vote(predictions_all_list):
+    # 测试能否push到GitHub
     len_data = len(predictions_all_list[0])
     predictions_all = []
     vote_result_list = []
