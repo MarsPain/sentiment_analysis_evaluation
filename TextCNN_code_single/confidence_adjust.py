@@ -133,4 +133,17 @@ def adjust_confidence(logits_all, column_name):
             if (logits_list[0]-logits_list[2] < param_3) and label_predict == 0:  # 减少将标签1错误地识别为0的数量
                 label_predict = 1
             predictions_all.append(label_predict)
+    if column_name == "location_distance_from_business_district":
+        param_1 = 1.2
+        param_2 = 1.1
+        param_3 = 4.3
+        predictions_all = []
+        for i in range(len(logits_all)):
+            logits_list = logits_all[i]
+            label_predict = np.argmax(logits_list)
+            if (logits_list[1]-logits_list[3]) < param_1 and (logits_list[0]+logits_list[2]) < param_2 and label_predict == 1:   # 减少将标签3错误地识别为1的数量
+                label_predict = 3
+            if (logits_list[0]-logits_list[2] < param_3) and label_predict == 0:  # 减少将标签1错误地识别为0的数量
+                label_predict = 1
+            predictions_all.append(label_predict)
     return predictions_all

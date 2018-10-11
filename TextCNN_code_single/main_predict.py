@@ -12,7 +12,6 @@ from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf
 from TextCNN_code_single.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code_single.model import TextCNN
-from TextCNN_code_single.confidence_adjust import automatic_search, adjust_confidence
 
 PAD_ID = 0
 UNK_ID = 1
@@ -27,7 +26,7 @@ test_data_predict_out_path = "result.csv"
 models_dir = "ckpt_3"
 word_label_dict = "pkl/word_label_dict.pkl"
 tfidf_path = "data/tfidf.txt"
-word2vec_model_path = "data/word2vec_word_model_sg.txt"
+word2vec_model_path = "data/word2vec_word_model.txt"
 log_predict_error_dir = "error_log"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
@@ -139,7 +138,7 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    column = columns[2]  # 选择评价对象
+    column = columns[3]  # 选择评价对象
     model_path = os.path.join(models_dir, column)
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
@@ -161,6 +160,7 @@ def predict():
         predictions_all = logits_to_predictions(logits_all, column, label_to_index)  # 将logits转化为predictions
         # 对比predictions和真实label，如果不对，就打印logits到文件中
         write_predict_error_to_file(predictions_all, logits_all, column, label_to_index, log_predict_error_dir)
+        print(len(predictions_all))
         _ = test_f_score_in_valid_data(predictions_all, column, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
