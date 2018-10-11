@@ -15,4 +15,4 @@ top_k = 3
 learning_rate = 0.001
 clip_gradients = 3.0
 validate_every = 1
-dropout_keep_prob = 0.6
+dropout_keep_prob = 0.5
