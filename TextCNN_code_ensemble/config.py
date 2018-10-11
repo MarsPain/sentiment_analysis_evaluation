@@ -2,6 +2,8 @@
 # -*- coding:utf-8 -*-
 
 import os
+num_models = 5
+column_index = 2
 num_classes = 4
 num_epochs = 20
 batch_size = 16

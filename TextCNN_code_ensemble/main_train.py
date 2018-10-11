@@ -175,7 +175,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        column_name = column_name_list[2]   # 选择评价对象
+        column_name = column_name_list[config.column_index]   # 选择评价对象
         logger.info("start %s model train" % column_name)
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
@@ -185,7 +185,7 @@ class Main:
         logger.info("complete all models' train")
 
     def train(self, sess, column_name):
-        for model_index in range(5):
+        for model_index in range(config.num_models):
             sess.run(tf.global_variables_initializer())
             print("%s 的第 %s 个模型" % (column_name, str(model_index)))
             train_batch_sample_manager = afresh_sampling(self.train_data, self.least_label_dict, column_name, int(FLAGS.batch_size))

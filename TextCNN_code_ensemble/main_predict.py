@@ -136,7 +136,7 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    column = columns[2]  # 选择评价对象
+    column = columns[config.column_index]  # 选择评价对象
     model_path = os.path.join(models_dir, column)
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
@@ -145,15 +145,19 @@ def predict():
         text_cnn, saver = create_model(sess, index_to_word)
         saver.restore(sess, tf.train.latest_checkpoint(model_path))
         logger.info("compete load %s model and start predict" % column)
-        for batch in test_batch_manager.iter_batch(shuffle=False):
-            test_x, features_vector = batch
-            # print(len(test_x[0]), test_x[0])
-            feed_dict = {text_cnn.input_x: test_x, text_cnn.features_vector: features_vector,
-                         text_cnn.dropout_keep_prob: 1.0}
-            predictions = sess.run([text_cnn.predictions], feed_dict)
-            # print("logits:", logits[0])
-            predictions_all.extend(list(predictions[0]))
-        # test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
+        predictions_all_list = []
+        for model_index in range(config.num_models):
+            for batch in test_batch_manager.iter_batch(shuffle=False):
+                test_x, features_vector = batch
+                # print(len(test_x[0]), test_x[0])
+                feed_dict = {text_cnn.input_x: test_x, text_cnn.features_vector: features_vector,
+                             text_cnn.dropout_keep_prob: 1.0}
+                predictions = sess.run([text_cnn.predictions], feed_dict)
+                # print("logits:", logits[0])
+                predictions_all.extend(list(predictions[0]))
+            predictions_all_list.append(predictions_all)
+        predictions_all, vote_result_list = predictions_vote(predictions_all_list)
+        test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
         for i in range(len(predictions_all)):
@@ -162,6 +166,27 @@ def predict():
         test_data_df[column] = predictions_all
     logger.info("compete %s predict" % column)
     test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
+
+
+def predictions_vote(predictions_all_list):
+    len_data = len(predictions_all_list[0])
+    predictions_all = []
+    vote_result_list = []
+    for i in range(len_data):
+        prediction_0, prediction_1, prediction_2, prediction_3 = 0, 0, 0, 0
+        for j in range(config.num_models):
+            if predictions_all_list[j][i] == 0:
+                prediction_0 += 1
+            elif predictions_all_list[j][i] == 1:
+                prediction_1 += 1
+            elif predictions_all_list[j][i] == 1:
+                prediction_2 += 1
+            else:
+                prediction_3 += 1
+        vote_result = [prediction_0, prediction_1, prediction_2, prediction_3]
+        predictions_all.append(np.argmax(vote_result))
+        vote_result_list.append(vote_result)
+    return predictions_all, vote_result_list
 
 
 def test_f_score_in_valid_data(predictions_all, columns, label_to_index):
