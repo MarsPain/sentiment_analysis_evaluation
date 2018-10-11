@@ -27,7 +27,7 @@ tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf val
 tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_trainingset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("test_data_path", "../data/sentiment_analysis_testa.csv", "path of traning data.")
-tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model.txt", "word2vec's embedding for word")
+tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.txt", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for char")
@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_integer("num_filters", config.num_filters, "number of filter
 tf.app.flags.DEFINE_integer("max_len", config.max_len, "max sentence length. length should be divide by 3,""which is used by k max pooling.")
 tf.app.flags.DEFINE_integer("top_k", config.top_k, "value of top k for k-max polling")
 tf.app.flags.DEFINE_float("learning_rate", config.learning_rate, "learning rate")  # 0.001
-tf.app.flags.DEFINE_boolean("decay_lr_flag", True, "whether manally decay lr")
+tf.app.flags.DEFINE_boolean("decay_lr_flag", False, "whether manally decay lr")
 tf.app.flags.DEFINE_float("clip_gradients", config.clip_gradients, "clip_gradients")
 tf.app.flags.DEFINE_integer("validate_every", config.validate_every, "Validate every validate_every epochs.")
 tf.app.flags.DEFINE_float("dropout_keep_prob", config.dropout_keep_prob, "dropout keep probability")
@@ -88,8 +88,8 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
-        content_train = self.train_data_df.iloc[:10000, 1]
-        content_valid = self.validate_data_df.iloc[:1500, 1]
+        content_train = self.train_data_df.iloc[:, 1]
+        content_valid = self.validate_data_df.iloc[:, 1]
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
@@ -109,11 +109,11 @@ class Main:
         logger.info("load label data")
         self.label_train_dict = {}
         for column in self.columns[2:]:
-            label_train = list(self.train_data_df[column].iloc[:10000])
+            label_train = list(self.train_data_df[column].iloc[:])
             self.label_train_dict[column] = label_train
         self.label_valid_dict = {}
         for column in self.columns[2:]:
-            label_valid = list(self.validate_data_df[column].iloc[:1500])
+            label_valid = list(self.validate_data_df[column].iloc[:])
             self.label_valid_dict[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
@@ -225,7 +225,7 @@ class Main:
                         saver.save(sess, save_path, global_step=epoch)
                         best_acc = eval_accc
                         best_f1_score = f1_scoree
-                    if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 20 or epoch == 40 or epoch == 60 or epoch == 100)):
+                    if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 15 or epoch == 20)):
                         for i in range(1):  # decay learning rate if necessary.
                             print(i, "Going to decay learning rate by half.")
                             sess.run(text_cnn.learning_rate_decay_half_op)

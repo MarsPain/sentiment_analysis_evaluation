@@ -2,10 +2,10 @@
 # -*- coding:utf-8 -*-
 
 import os
-num_models = 5
+num_models = 10
 column_index = 2
 num_classes = 4
-num_epochs = 20
+num_epochs = 30
 batch_size = 16
 vocab_size = 210000
 tokenize_style = "word"
