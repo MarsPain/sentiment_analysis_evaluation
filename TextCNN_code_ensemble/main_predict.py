@@ -26,8 +26,8 @@ test_data_predict_out_path = "result.csv"
 models_dir = "ckpt"
 word_label_dict = "pkl/word_label_dict.pkl"
 tfidf_path = "data/tfidf.txt"
-word2vec_model_path = "data/word2vec_word_model.txt"
-vote_dir = "vote_log"
+word2vec_model_path = "data/word2vec_word_model_sg.txt"
+predict_vote_dir = "vote_log"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
 logger = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ def predict():
                 predictions_all.extend(list(predictions[0]))
             predictions_all_list.append(predictions_all)
         predictions_all, vote_result_list = predictions_vote(predictions_all_list)
-        write_predict_vote_to_file(predictions_all, vote_result_list, column, label_to_index, vote_dir)
+        write_predict_vote_to_file(predictions_all, vote_result_list, column, label_to_index)
         test_f_score_in_valid_data(predictions_all, columns, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
@@ -192,7 +192,7 @@ def predictions_vote(predictions_all_list):
     return predictions_all, vote_result_list
 
 
-def write_predict_vote_to_file(predictions_all, vote_result_list, column_name, label_to_index, vote_dir):
+def write_predict_vote_to_file(predictions_all, vote_result_list, column_name, label_to_index):
     validate_data_df = load_data_from_csv(test_data_path)
     label_valid = list(validate_data_df[column_name].iloc[:])
     for i in range(len(predictions_all)):
@@ -203,7 +203,7 @@ def write_predict_vote_to_file(predictions_all, vote_result_list, column_name, l
     num_votes_1_all_list = []
     num_votes_2_all_list = []
     num_votes_3_all_list = []
-    error_path = os.path.join(vote_dir, column_name + ".csv")
+    predict_vote_path = os.path.join(predict_vote_dir, column_name + ".csv")
     for i in range(len(predictions_all)):
         if label_valid[i] != predictions_all[i]:
             label_valid_list.append(label_valid[i])
@@ -218,9 +218,9 @@ def write_predict_vote_to_file(predictions_all, vote_result_list, column_name, l
     num_votes_1_all_array = pd.Series(num_votes_1_all_list, name="标签1的所获票数")
     num_votes_2_all_array = pd.Series(num_votes_2_all_list, name="标签2的所获票数")
     num_votes_3_all_array = pd.Series(num_votes_3_all_list, name="标签3的所获票数")
-    error_log_array_list = [label_valid_array, predictions_all_array, num_votes_0_all_array, num_votes_1_all_array, num_votes_2_all_array, num_votes_3_all_array]
-    error_log_df = pd.concat(error_log_array_list, axis=1)
-    error_log_df.to_csv(error_path, encoding="utf-8")
+    vote_log_array_list = [label_valid_array, predictions_all_array, num_votes_0_all_array, num_votes_1_all_array, num_votes_2_all_array, num_votes_3_all_array]
+    vote_log_df = pd.concat(vote_log_array_list, axis=1)
+    vote_log_df.to_csv(predict_vote_path, encoding="utf-8")
 
 
 def test_f_score_in_valid_data(predictions_all, columns, label_to_index):
