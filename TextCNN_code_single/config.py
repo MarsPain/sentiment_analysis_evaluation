@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 
 import os
-num_classes = 4
+num_classes = 2
 num_epochs = 35
 batch_size = 16
 vocab_size = 210000

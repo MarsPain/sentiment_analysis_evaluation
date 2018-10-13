@@ -226,7 +226,7 @@ class Main:
                         saver.save(sess, save_path, global_step=epoch)
                         best_acc = eval_accc
                         best_f1_score = f1_scoree
-                    if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 15 or epoch == 20)):
+                    if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 8 or epoch == 11)):
                         for i in range(1):  # decay learning rate if necessary.
                             print(i, "Going to decay learning rate by half.")
                             sess.run(text_cnn.learning_rate_decay_half_op)

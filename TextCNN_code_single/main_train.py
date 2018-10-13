@@ -20,7 +20,7 @@ from TextCNN_code_single.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_4", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_2", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -132,7 +132,7 @@ class Main:
 
     def get_data(self):
         logger.info("start get data")
-        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_3.pkl")
+        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_2.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
                 train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
@@ -158,7 +158,6 @@ class Main:
             self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
             with open(train_valid_test, "wb") as f:
                 pickle.dump([train_data, valid_data, self.label_weight_dict], f)
-        # self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
         print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
         # 获取train、valid数据的batch生成类
         self.train_batch_manager = BatchManager(train_data, int(FLAGS.batch_size))
