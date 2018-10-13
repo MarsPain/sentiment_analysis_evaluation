@@ -139,7 +139,7 @@ def predict():
     columns = test_data_df.columns.tolist()
     # model predict
     logger.info("start predict test data")
-    column = columns[2]  # 选择评价对象
+    column = columns[config.column_index]  # 选择评价对象
     model_path = os.path.join(models_dir, column)
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True

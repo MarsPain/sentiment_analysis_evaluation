@@ -223,7 +223,7 @@ class Main:
                         save_path = FLAGS.ckpt_dir + "/" + column_name + "/" + str(model_index) + "/model.ckpt"
                         print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
                               ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
-                        saver.save(sess, save_path, global_step=epoch)
+                        saver.save(sess, save_path)
                         best_acc = eval_accc
                         best_f1_score = f1_scoree
                     if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 8 or epoch == 11)):

@@ -3,7 +3,7 @@
 
 import os
 num_models = 10
-column_index = 2
+column_index = 3
 num_classes = 4
 num_epochs = 15
 batch_size = 16

@@ -173,7 +173,7 @@ class Main:
         """
         logger.info("start train")
         column_name_list = self.columns
-        column_name = column_name_list[10]   # 选择评价对象
+        column_name = column_name_list[config.column_index]   # 选择评价对象
         logger.info("start %s model train" % column_name)
         tf_config = tf.ConfigProto()
         tf_config.gpu_options.allow_growth = True
@@ -216,7 +216,7 @@ class Main:
                     save_path = FLAGS.ckpt_dir + "/" + column_name + "/model.ckpt"
                     print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
                           ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
-                    saver.save(sess, save_path, global_step=epoch)
+                    saver.save(sess, save_path)
                     best_acc = eval_accc
                     best_f1_score = f1_scoree
                 if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 14 or epoch == 18)):
