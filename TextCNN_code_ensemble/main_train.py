@@ -20,7 +20,7 @@ from TextCNN_code_ensemble.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_2", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -186,7 +186,6 @@ class Main:
 
     def train(self, sess, column_name):
         for model_index in range(config.num_models):
-        # for model_index in [3, 4]:
             sess.run(tf.global_variables_initializer())
             print("%s 的第 %s 个模型" % (column_name, str(model_index)))
             train_batch_sample_manager = afresh_sampling(self.train_data, self.least_label_dict, column_name, int(FLAGS.batch_size))

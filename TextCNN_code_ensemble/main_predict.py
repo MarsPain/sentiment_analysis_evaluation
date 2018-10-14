@@ -177,7 +177,7 @@ def predictions_vote(predictions_all_list):
     vote_result_list = []
     for i in range(len_data):
         prediction_0, prediction_1, prediction_2, prediction_3 = 0, 0, 0, 0
-        for index in range(config.num_models):
+        for index, _ in enumerate([n for n in range(config.num_models)]):
             if predictions_all_list[index][i] == 0:
                 prediction_0 += 1
             elif predictions_all_list[index][i] == 1:
