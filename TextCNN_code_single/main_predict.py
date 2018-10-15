@@ -20,11 +20,11 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 # test_data_path = "../data/sentiment_analysis_testa.csv"
-test_data_path = "../data/sentiment_analysis_validationset.csv"
-# test_data_path = "result.csv"
+# test_data_path = "../data/sentiment_analysis_validationset.csv"
+test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
-models_dir = "ckpt_3"
+models_dir = "ckpt"
 word_label_dict = "pkl/word_label_dict.pkl"
 tfidf_path = "data/tfidf.txt"
 word2vec_model_path = "data/word2vec_word_model.txt"
@@ -160,9 +160,9 @@ def predict():
             # print(logits_all)
         predictions_all = logits_to_predictions(logits_all, column, label_to_index)  # 将logits转化为predictions
         # 对比predictions和真实label，如果不对，就打印logits到文件中
-        write_predict_error_to_file(predictions_all, logits_all, column, label_to_index, log_predict_error_dir)
-        print(len(predictions_all))
-        _ = test_f_score_in_valid_data(predictions_all, column, label_to_index)  # test_f_score_in_valid_data
+        # write_predict_error_to_file(predictions_all, logits_all, column, label_to_index, log_predict_error_dir)
+        # print(len(predictions_all))
+        # _ = test_f_score_in_valid_data(predictions_all, column, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
         for i in range(len(predictions_all)):
@@ -170,7 +170,7 @@ def predict():
         # print(predictions_all)
         test_data_df[column] = predictions_all
     logger.info("compete %s predict" % column)
-    # test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
+    test_data_df.to_csv(test_data_predict_out_path, encoding="utf_8_sig", index=False)
 
 
 def write_predict_error_to_file(predictions_all, logits_all, column_name, label_to_index, error_dir):
