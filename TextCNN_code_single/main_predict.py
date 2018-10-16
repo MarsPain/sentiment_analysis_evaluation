@@ -20,12 +20,12 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 # test_data_path = "../data/sentiment_analysis_testa.csv"
-# test_data_path = "../data/sentiment_analysis_validationset.csv"
-test_data_path = "result.csv"
+test_data_path = "../data/sentiment_analysis_validationset.csv"
+# test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
-models_dir = "ckpt"
-word_label_dict = "pkl/word_label_dict.pkl"
+models_dir = "ckpt_3"
+word_label_dict = "pkl/word_label_dict_3.pkl"
 tfidf_path = "data/tfidf.txt"
 word2vec_model_path = "data/word2vec_word_model.txt"
 log_predict_error_dir = "error_log"
@@ -48,7 +48,7 @@ def get_data():
         # seg words
         logger.info("start seg test data")
         content_test = test_data_df.iloc[:, 1]
-        string_test = seg_words(content_test, "word")
+        string_test = seg_words(content_test, config.tokenize_style)
         logger.info("complete seg test data")
         with open(word_label_dict, 'rb') as dict_f:
             word_to_index, index_to_word, label_to_index, index_to_label = pickle.load(dict_f)
@@ -162,7 +162,7 @@ def predict():
         # 对比predictions和真实label，如果不对，就打印logits到文件中
         # write_predict_error_to_file(predictions_all, logits_all, column, label_to_index, log_predict_error_dir)
         # print(len(predictions_all))
-        # _ = test_f_score_in_valid_data(predictions_all, column, label_to_index)  # test_f_score_in_valid_data
+        _ = test_f_score_in_valid_data(predictions_all, column, label_to_index)  # test_f_score_in_valid_data
         # 将predictions映射到label，预测得到的是label的index。
         logger.info("start transfer index to label")
         for i in range(len(predictions_all)):

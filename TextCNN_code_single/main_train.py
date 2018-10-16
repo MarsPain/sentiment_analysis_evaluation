@@ -20,15 +20,16 @@ from TextCNN_code_single.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_2", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_3", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
-tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
+tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf_3.txt", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_trainingset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("test_data_path", "../data/sentiment_analysis_testa.csv", "path of traning data.")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model.txt", "word2vec's embedding for word")
 tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.txt", "word2vec's embedding for word")
+# tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model_sg.txt", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for char")
@@ -92,7 +93,7 @@ class Main:
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
-        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid.pkl")
+        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid_3.pkl")
         if os.path.exists(string_train_valid):  # 若word_label_path已存在
             with open(string_train_valid, 'rb') as f:
                 self.string_train, self.string_valid = pickle.load(f)
@@ -120,26 +121,26 @@ class Main:
         logger.info("start get dict")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
-        word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict.pkl")    # 存储word和label与index之间的双向映射字典
+        word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict_3.pkl")    # 存储word和label与index之间的双向映射字典
         if os.path.exists(word_label_dict):  # 若word_label_path已存在
             with open(word_label_dict, 'rb') as dict_f:
                 self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = pickle.load(dict_f)
         else:   # 重新读取训练数据并创建各个映射字典
             self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = \
                 create_dict(self.string_train, self.label_train_dict, word_label_dict, FLAGS.vocab_size)
-        # print(len(self.word_to_index), self.word_to_index)
+        print(len(self.word_to_index), self.word_to_index)
         logger.info("complete get dict")
 
     def get_data(self):
         logger.info("start get data")
-        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_2.pkl")
+        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_3.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
                 train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
             # 获取tfidf值并存储为tfidf字典
             if not os.path.exists(FLAGS.tfidf_path):
-                get_tfidf_and_save(self.string_train, FLAGS.tfidf_path)
+                get_tfidf_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
             tfidf_dict = load_tfidf_dict(FLAGS.tfidf_path)
             # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
             train_vector_tfidf = get_vector_tfidf(self.string_train, tfidf_dict)

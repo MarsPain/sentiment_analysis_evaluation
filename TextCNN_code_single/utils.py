@@ -11,14 +11,17 @@ def load_data_from_csv(file_name, header=0, encoding="utf-8"):
     return data_df
 
 
-def get_tfidf_and_save(data, tfidf_path):
+def get_tfidf_and_save(data, tfidf_path, tokenize_style):
     """
     获取tfidf值并写入到文件中
     :param data:
     :param tfidf_path:
     :return:
     """
-    vectorizer_tfidf = TfidfVectorizer()
+    if tokenize_style == "word":
+        vectorizer_tfidf = TfidfVectorizer()
+    else:
+        vectorizer_tfidf = TfidfVectorizer(analyzer="char")
     vectorizer_tfidf.fit(data)
     train_vector_tfidf = vectorizer_tfidf.transform(data)
     # print("train_vector_tfidf", train_vector_tfidf[0])
@@ -31,7 +34,7 @@ def get_tfidf_and_save(data, tfidf_path):
     for i in range(1, 104):
         # 内存不够，所以分批次转换成稀疏数组
         tfidf_values_list = train_vector_tfidf[(i-1)*1000: i*1000].toarray()    # 得到保存所有句子所包含词汇的tfidf值的稀疏数组（失去了原有的句子的顺序）
-        print("tfidf_values_list:", len(tfidf_values_list), len(tfidf_values_list[0]))
+        print("tfidf_values_list:", len(tfidf_values_list), len(tfidf_values_list[0]), tfidf_values_list[0])
         # print("tfidf_values_list:", len(tfidf_values_list[0]), tfidf_values_list[0], sum(tfidf_values_list[0]))
         for j in range(len(tfidf_values_list)):
             for k in range(len(word_list_sort)):
