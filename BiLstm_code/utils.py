@@ -16,6 +16,7 @@ def get_tfidf_and_save(data, tfidf_path, tokenize_style):
     获取tfidf值并写入到文件中
     :param data:
     :param tfidf_path:
+    :param tokenize_style:
     :return:
     """
     if tokenize_style == "word":

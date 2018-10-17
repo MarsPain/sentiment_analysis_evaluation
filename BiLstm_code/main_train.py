@@ -13,22 +13,20 @@ import os
 import argparse
 from BiLstm_code.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
     get_vector_tfidf, BatchManager, get_max_len, get_weights_for_current_batch, compute_confuse_matrix,\
-    get_labal_weight
+    get_labal_weight, get_least_label, afresh_sampling
 from BiLstm_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
-# from BiLstm_code.model import TextCNN
 from BiLstm_code.model2 import Bilstm
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_3", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_trainingset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("test_data_path", "../data/sentiment_analysis_testa.csv", "path of traning data.")
-# tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model.txt", "word2vec's embedding for word")
 tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.txt", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
@@ -68,8 +66,10 @@ class Main:
         self.label_to_index = None   # label到index的映射字典
         self.index_to_label = None  # index到label的映射字典
         self.label_weight_dict = None   # 存储标签权重
-        self.train_batch_manager = None  # train数据batch生成类
+        # self.train_batch_manager = None  # train数据batch生成类
         self.valid_batch_manager = None  # valid数据batch生成类
+        self.least_label_dict = None    # 获取每种评价对象的标签中数量最少的标签数量
+        self.train_data = None  # 被打包好的训练数据
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
@@ -90,7 +90,7 @@ class Main:
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
-        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid.pkl")
+        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid_2.pkl")
         if os.path.exists(string_train_valid):  # 若word_label_path已存在
             with open(string_train_valid, 'rb') as f:
                 self.string_train, self.string_valid = pickle.load(f)
@@ -130,14 +130,14 @@ class Main:
 
     def get_data(self):
         logger.info("start get data")
-        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test.pkl")
+        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_2.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
-                train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
+                self.train_data, valid_data, self.label_weight_dict, self.least_label_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
             # 获取tfidf值并存储为tfidf字典
             if not os.path.exists(FLAGS.tfidf_path):
-                get_tfidf_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
+                get_tfidf_and_save(self.string_train, FLAGS.tfidf_path)
             tfidf_dict = load_tfidf_dict(FLAGS.tfidf_path)
             # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
             train_vector_tfidf = get_vector_tfidf(self.string_train, tfidf_dict)
@@ -150,16 +150,17 @@ class Main:
             # print(self.label_train_dict["location_traffic_convenience"])
             # 打乱数据、padding,并对评论序列、特征向量、标签字典打包
             # max_sentence = get_max_len(sentences_train)  # 获取最大评论序列长度
-            train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, FLAGS.max_len)
+            self.train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, FLAGS.max_len)
             valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, FLAGS.max_len)
             # 从训练集中获取label_weight_dict（存储标签权重）
-            self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
+            self.label_weight_dict = get_labal_weight(self.train_data[2], self.columns, config.num_classes)
+            self.least_label_dict = get_least_label(self.train_data[2], self.columns)
             with open(train_valid_test, "wb") as f:
-                pickle.dump([train_data, valid_data, self.label_weight_dict], f)
-        print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
+                pickle.dump([self.train_data, valid_data, self.label_weight_dict, self.least_label_dict], f)
+        print("训练集大小：", len(self.train_data[0]), "验证集大小：", len(valid_data[0]))
         # 获取train、valid数据的batch生成类
-        self.train_batch_manager = BatchManager(train_data, int(FLAGS.batch_size))
-        print("训练集批次数量：", self.train_batch_manager.len_data)
+        # self.train_batch_manager = BatchManager(self.train_data, int(FLAGS.batch_size))
+        # print("训练集批次数量：", self.train_batch_manager.len_data)
         self.valid_batch_manager = BatchManager(valid_data, int(FLAGS.batch_size))
         logger.info("complete get data")
 
@@ -181,58 +182,62 @@ class Main:
         logger.info("complete all models' train")
 
     def train(self, sess, column_name):
-        text_cnn, saver = self.create_model(sess, column_name)
-        curr_epoch = sess.run(text_cnn.epoch_step)
-        iteration = 0
-        best_acc = 0.50
-        best_f1_score = 0.20
-        for epoch in range(curr_epoch, FLAGS.num_epochs):
-            loss, eval_acc, counter = 0.0, 0.0, 0
-            # train
-            for batch in self.train_batch_manager.iter_batch(shuffle=True):
-                iteration += 1
-                input_x, features_vector, input_y_dict = batch
-                input_y = input_y_dict[column_name]
-                # print("input_y:", input_y)
-                weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
-                feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
-                             text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
-                             text_cnn.iter: iteration}
-                curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
-                loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                if counter % 100 == 0:  # steps_check
-                    print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
-            print("going to increment epoch counter....")
-            sess.run(text_cnn.epoch_increment)
-            # valid
-            if epoch % FLAGS.validate_every == 0:
-                eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
-                print("【Validation】Epoch %d\t f_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f" % (epoch, f_0, f_1, f_2, f_3))
-                print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
-                # save model to checkpoint
-                if f1_scoree > best_f1_score:
-                    save_path = FLAGS.ckpt_dir + "/" + column_name + "/model.ckpt"
-                    print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
-                          ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
-                    saver.save(sess, save_path)
-                    best_acc = eval_accc
-                    best_f1_score = f1_scoree
-                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 14 or epoch == 18)):
-                    for i in range(1):  # decay learning rate if necessary.
-                        print(i, "Going to decay learning rate by half.")
-                        sess.run(text_cnn.learning_rate_decay_half_op)
+        for model_index in range(config.num_models):
+            sess.run(tf.global_variables_initializer())
+            print("%s 的第 %s 个模型" % (column_name, str(model_index)))
+            train_batch_sample_manager = afresh_sampling(self.train_data, self.least_label_dict, column_name, int(FLAGS.batch_size))
+            text_cnn, saver = self.create_model(sess, column_name, model_index)
+            curr_epoch = sess.run(text_cnn.epoch_step)
+            iteration = 0
+            best_acc = 0.50
+            best_f1_score = 0.20
+            print("训练集批次数量：", train_batch_sample_manager.len_data)
+            for epoch in range(curr_epoch, FLAGS.num_epochs):
+                loss, eval_acc, counter = 0.0, 0.0, 0
+                # train
+                for batch in train_batch_sample_manager.iter_batch(shuffle=True):
+                    iteration += 1
+                    input_x, features_vector, input_y = batch
+                    # print("input_y:", input_y)
+                    weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
+                    feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
+                                 text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
+                                 text_cnn.iter: iteration}
+                    curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
+                    loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
+                    if counter % 100 == 0:  # steps_check
+                        print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
+                print("going to increment epoch counter....")
+                sess.run(text_cnn.epoch_increment)
+                # valid
+                if epoch % FLAGS.validate_every == 0:
+                    eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
+                    print("【Validation】Epoch %d\t f_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f" % (epoch, f_0, f_1, f_2, f_3))
+                    print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
+                    # save model to checkpoint
+                    if f1_scoree > best_f1_score:
+                        save_path = FLAGS.ckpt_dir + "/" + column_name + "/" + str(model_index) + "/model.ckpt"
+                        print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
+                              ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
+                        saver.save(sess, save_path)
+                        best_acc = eval_accc
+                        best_f1_score = f1_scoree
+                    if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 8 or epoch == 11)):
+                        for i in range(1):  # decay learning rate if necessary.
+                            print(i, "Going to decay learning rate by half.")
+                            sess.run(text_cnn.learning_rate_decay_half_op)
 
-    def create_model(self, sess, column_name):
-        model = Bilstm()
+    def create_model(self, sess, column_name, model_index):
+        text_cnn = Bilstm()
         saver = tf.train.Saver()
-        model_save_dir = FLAGS.ckpt_dir + "/" + column_name
+        model_save_dir = FLAGS.ckpt_dir + "/" + column_name + "/" + str(model_index)
         if os.path.exists(model_save_dir):
             print("Restoring Variables from Checkpoint.")
             saver.restore(sess, tf.train.latest_checkpoint(model_save_dir))
             if False:
                 for i in range(1):  # decay learning rate if necessary.
                     print(i, "Going to decay learning rate by half.")
-                    sess.run(model.learning_rate_decay_half_op)
+                    sess.run(text_cnn.learning_rate_decay_half_op)
         else:
             print('Initializing Variables')
             sess.run(tf.global_variables_initializer())
@@ -240,13 +245,13 @@ class Main:
                 os.makedirs(model_save_dir)
             if FLAGS.use_pretrained_embedding:  # 加载预训练的词向量
                 print("===>>>going to use pretrained word embeddings...")
-                old_emb_matrix = sess.run(model.Embedding.read_value())
+                old_emb_matrix = sess.run(text_cnn.Embedding.read_value())
                 new_emb_matrix = load_word_embedding(old_emb_matrix, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
                 word_embedding = tf.constant(new_emb_matrix, dtype=tf.float32)  # 转为tensor
-                t_assign_embedding = tf.assign(model.Embedding, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
+                t_assign_embedding = tf.assign(text_cnn.Embedding, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
                 sess.run(t_assign_embedding)
                 print("using pre-trained word emebedding.ended...")
-        return model, saver
+        return text_cnn, saver
 
     def evaluate(self, sess, text_cnn, batch_manager, iteration, column_name):
         small_value = 0.00001

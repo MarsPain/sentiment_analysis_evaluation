@@ -104,7 +104,7 @@ class Bilstm:
 
     def loss_layer(self):
         with tf.name_scope("loss"):
-            losses = tf.losses.sparse_softmax_cross_entropy(self.input_y, self.logits)
+            losses = tf.losses.sparse_softmax_cross_entropy(self.input_y, self.logits, weights=self.weights)
             loss_main = tf.reduce_mean(losses)
         return loss_main
 

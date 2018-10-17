@@ -13,10 +13,15 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 
+stopwords_path = "data/stop_words_2.txt"
+
+
 def seg_words(contents, tokenize_style):
     string_segs = []
     if tokenize_style == "word":
-        stopwords_set = set()
+        stopwords = stopwordslist(stopwords_path)
+        stopwords_set = set(stopwords)
+        # stopwords_set = set()
         for content in contents:
             content = re.sub(" ", "，", content.strip())
             # print(content)
@@ -28,6 +33,8 @@ def seg_words(contents, tokenize_style):
                     segs_new.append(word)
                 else:
                     pass
+                    # print("发现停用词：%s" % word)
+            # print(" ".join(segs_new))
             string_segs.append(" ".join(segs_new))
     else:
         for content in contents:
@@ -152,11 +159,36 @@ def get_labal_weight(label_dict, columns, num_classes):
                 label_2 += 1
             else:
                 label_3 += 1
-        label_number_array = np.asarray([label_0, label_1, label_2, label_3])
-        label_weight_list = len_data / (num_classes * label_number_array)
+        # label_number_array = np.asarray([label_0, label_1, label_2, label_3])
+        # label_weight_list = len_data / (num_classes * label_number_array)
+        label_weight_list = [1, 1, 1, 1]    # 取消权重参数
         # print(column, label_number_array, label_weight_list)
         label_weight_dict[column] = label_weight_list
     return label_weight_dict
+
+
+def get_least_label(label_dict, columns):
+    least_label_dict = {}
+    for column in columns[2:]:
+        label_list = list(label_dict[column])
+        label_0 = 0
+        label_1 = 0
+        label_2 = 0
+        label_3 = 0
+        for label in label_list:
+            if label == 0:
+                label_0 += 1
+            elif label == 1:
+                label_1 += 1
+            elif label == 2:
+                label_2 += 1
+            else:
+                label_3 += 1
+        label_number_array = np.asarray([label_0, label_1, label_2, label_3])
+        least_label_num = min(label_0, label_1, label_2, label_3)
+        print(column, label_number_array, least_label_num)
+        least_label_dict[column] = least_label_num
+    return least_label_dict
 
 
 def sentence_word_to_index(string, word_to_index, label_train_dict, label_to_index):
@@ -252,6 +284,32 @@ class BatchManager:
             yield self.batch_data[idx]
 
 
+class SampleBatchManager:
+    """
+    用于生成batch数据的batch管理类
+    """
+    def __init__(self, data,  batch_size):
+        self.batch_data = self.get_batch(data, batch_size)
+        self.len_data = len(self.batch_data)
+
+    @staticmethod
+    def get_batch(data, batch_size):
+        num_batch = int(math.ceil(len(data[0]) / batch_size))
+        batch_data = []
+        for i in range(num_batch):
+            sentences = data[0][i*batch_size:(i+1)*batch_size]
+            vector_tfidf = data[1][i*batch_size:(i+1)*batch_size]
+            label = data[2][i*batch_size:(i+1)*batch_size]
+            batch_data.append([sentences, vector_tfidf, label])
+        return batch_data
+
+    def iter_batch(self, shuffle=False):
+        if shuffle:
+            random.shuffle(self.batch_data)
+        for idx in range(self.len_data):
+            yield self.batch_data[idx]
+
+
 def get_weights_for_current_batch(answer_list, weights_dict):
     weights_list_batch = list(np.ones((len(answer_list))))
     answer_list = list(answer_list)
@@ -313,3 +371,56 @@ def compute_confuse_matrix(logit, label, small_value):
             false_negative_3 += 1
     return true_positive_0, false_positive_0, false_negative_0, true_positive_1, false_positive_1, false_negative_1,\
            true_positive_2, false_positive_2, false_negative_2, true_positive_3, false_positive_3, false_negative_3
+
+
+def afresh_sampling(train_data, least_label_dict, column_name, batch_size):
+    sentences, feature_vector, label_dict = train_data
+    label = label_dict[column_name]
+    sentences_sample = []
+    feature_vector_sample = []
+    label_sample = []
+    least_label_num = least_label_dict[column_name]
+    len_data = len(sentences)
+    label_0_count = 0
+    label_1_count = 0
+    label_2_count = 0
+    label_3_count = 0
+    random_perm = np.random.permutation(len_data)   # 对索引进行随机排序
+    for index in random_perm:
+        if label_0_count == least_label_num and label_1_count == least_label_num and label_2_count == least_label_num and label_3_count == least_label_num:
+            break
+        if label[index] == 0 and label_0_count != least_label_num:
+            sentences_sample.append(sentences[index])
+            feature_vector_sample.append(feature_vector[index])
+            label_sample.append(label[index])
+            label_0_count += 1
+        elif label[index] == 1 and label_1_count != least_label_num:
+            sentences_sample.append(sentences[index])
+            feature_vector_sample.append(feature_vector[index])
+            label_sample.append(label[index])
+            label_1_count += 1
+        elif label[index] == 2 and label_2_count != least_label_num:
+            sentences_sample.append(sentences[index])
+            feature_vector_sample.append(feature_vector[index])
+            label_sample.append(label[index])
+            label_2_count += 1
+        elif label[index] == 3 and label_3_count != least_label_num:
+            sentences_sample.append(sentences[index])
+            feature_vector_sample.append(feature_vector[index])
+            label_sample.append(label[index])
+            label_3_count += 1
+        else:
+            continue
+    # print("各标签数量：", label_0_count, label_1_count, label_2_count, label_3_count)
+    # 对重采样的数据再次进行随机排序
+    sentences_sample_shuffle = []
+    vector_tfidf_sample_shuffle = []
+    label_sample_shuffle = []
+    random_perm_sample = np.random.permutation(4 * least_label_num)   # 对索引进行随机排序
+    for index in random_perm_sample:
+        sentences_sample_shuffle.append(sentences_sample[index])
+        vector_tfidf_sample_shuffle.append(feature_vector_sample[index])
+        label_sample_shuffle.append(label_sample[index])
+    train_data_sample_shuffle = [sentences_sample_shuffle, vector_tfidf_sample_shuffle, label_sample_shuffle]
+    train_batch_sample_manager = SampleBatchManager(train_data_sample_shuffle, batch_size)
+    return train_batch_sample_manager
