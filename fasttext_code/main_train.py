@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import csv
+from fastText import train_supervised, load_model
 import json
 import pickle
 import logging
@@ -78,8 +79,21 @@ class Main:
             write_to_txt(self.string_train, train_label_list, train_txt_path)
             write_to_txt(self.string_valid, valid_label_list, valid_txt_path)
 
+    def train(self):
+        column_name = self.columns[config.column_index]
+        train_txt_path = os.path.join("data", column_name + "_train.txt")
+        valid_txt_path = os.path.join("data", column_name + "_val.txt")
+        model_path = os.path.join("ckpt", column_name + "_model")
+        if not os.path.exists(model_path):
+            classifier = train_supervised(train_txt_path)
+            classifier.save_model(model_path)
+        else:
+            classifier = load_model(model_path)
+        result = classifier.test(valid_txt_path)
+
 
 if __name__ == "__main__":
     main = Main()
     main.load_data()
-    main.data_to_txt()
+    # main.data_to_txt()
+    main.train()
