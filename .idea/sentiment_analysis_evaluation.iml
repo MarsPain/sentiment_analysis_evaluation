@@ -6,6 +6,7 @@
       <excludeFolder url="file://$MODULE_DIR$/TextCNN_code/data" />
       <excludeFolder url="file://$MODULE_DIR$/TextCNN_code/pkl" />
       <excludeFolder url="file://$MODULE_DIR$/TextCNN_code_ensemble/ckpt" />
+      <excludeFolder url="file://$MODULE_DIR$/fasttext_code/data" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.5.4 (C:\Program Files\Anaconda3\envs\NER\python.exe)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
