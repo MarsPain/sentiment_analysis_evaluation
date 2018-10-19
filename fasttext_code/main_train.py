@@ -14,6 +14,7 @@ from fasttext_code.data_utils import seg_words, test_f_score_in_valid_data
 train_data_path = "../data/sentiment_analysis_trainingset.csv"
 dev_data_path = "../data/sentiment_analysis_validationset.csv"
 pkl_dir = "pkl"
+word_vector_dir = "word_vector"
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
@@ -109,10 +110,26 @@ class Main:
         test_f_score_in_valid_data(valid_label_list, prediction_all)
 
     # 结合get_word_vector方法和get_words方法获取最终训练得到的词向量
+    def get_word_vector(self):
+        column_name = self.columns[config.column_index]
+        model_path = os.path.join("ckpt", column_name + "_model")
+        word_vector_path = os.path.join(word_vector_dir, column_name + "_fasttext.txt")
+        classifier = load_model(model_path)
+        words_list = classifier.get_words()
+        print("词汇总数", len(words_list))
+        num_words = len(words_list)
+        with open(word_vector_path, "w", encoding="utf-8") as f:
+            f.write(str(num_words) + " " + str(100) + "\n")
+            for i in range(num_words):
+                word = words_list[i]
+                word_vector = classifier.get_word_vector(word)
+                # print("word_vector:", type(word_vector), len(word_vector))
+                f.write(word + " " + " ".join([str(vector_float) for vector_float in word_vector]) + "\n")
 
 if __name__ == "__main__":
     main = Main()
     main.load_data()
     # main.data_to_txt()
     main.train()
-    main.evaluate()
+    # main.evaluate()
+    main.get_word_vector()
