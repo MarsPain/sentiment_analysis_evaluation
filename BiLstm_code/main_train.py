@@ -16,11 +16,11 @@ from BiLstm_code.data_utils import seg_words, create_dict, shuffle_padding, sent
     get_labal_weight, get_least_label, afresh_sampling
 from BiLstm_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
-from BiLstm_code.model2 import Bilstm
+from BiLstm_code.model import Bilstm
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_3", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -66,7 +66,7 @@ class Main:
         self.label_to_index = None   # label到index的映射字典
         self.index_to_label = None  # index到label的映射字典
         self.label_weight_dict = None   # 存储标签权重
-        # self.train_batch_manager = None  # train数据batch生成类
+        self.train_batch_manager = None  # train数据batch生成类
         self.valid_batch_manager = None  # valid数据batch生成类
         self.least_label_dict = None    # 获取每种评价对象的标签中数量最少的标签数量
         self.train_data = None  # 被打包好的训练数据
@@ -159,8 +159,8 @@ class Main:
                 pickle.dump([self.train_data, valid_data, self.label_weight_dict, self.least_label_dict], f)
         print("训练集大小：", len(self.train_data[0]), "验证集大小：", len(valid_data[0]))
         # 获取train、valid数据的batch生成类
-        # self.train_batch_manager = BatchManager(self.train_data, int(FLAGS.batch_size))
-        # print("训练集批次数量：", self.train_batch_manager.len_data)
+        self.train_batch_manager = BatchManager(self.train_data, int(FLAGS.batch_size))
+        print("训练集批次数量：", self.train_batch_manager.len_data)
         self.valid_batch_manager = BatchManager(valid_data, int(FLAGS.batch_size))
         logger.info("complete get data")
 
@@ -182,50 +182,46 @@ class Main:
         logger.info("complete all models' train")
 
     def train(self, sess, column_name):
-        for model_index in range(config.num_models):
-            sess.run(tf.global_variables_initializer())
-            print("%s 的第 %s 个模型" % (column_name, str(model_index)))
-            train_batch_sample_manager = afresh_sampling(self.train_data, self.least_label_dict, column_name, int(FLAGS.batch_size))
-            text_cnn, saver = self.create_model(sess, column_name, model_index)
-            curr_epoch = sess.run(text_cnn.epoch_step)
-            iteration = 0
-            best_acc = 0.50
-            best_f1_score = 0.20
-            print("训练集批次数量：", train_batch_sample_manager.len_data)
-            for epoch in range(curr_epoch, FLAGS.num_epochs):
-                loss, eval_acc, counter = 0.0, 0.0, 0
-                # train
-                for batch in train_batch_sample_manager.iter_batch(shuffle=True):
-                    iteration += 1
-                    input_x, features_vector, input_y = batch
-                    # print("input_y:", input_y)
-                    weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
-                    feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
-                                 text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
-                                 text_cnn.iter: iteration}
-                    curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
-                    loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                    if counter % 100 == 0:  # steps_check
-                        print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
-                print("going to increment epoch counter....")
-                sess.run(text_cnn.epoch_increment)
-                # valid
-                if epoch % FLAGS.validate_every == 0:
-                    eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
-                    print("【Validation】Epoch %d\t f_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f" % (epoch, f_0, f_1, f_2, f_3))
-                    print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
-                    # save model to checkpoint
-                    if f1_scoree > best_f1_score:
-                        save_path = FLAGS.ckpt_dir + "/" + column_name + "/" + str(model_index) + "/model.ckpt"
-                        print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
-                              ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
-                        saver.save(sess, save_path)
-                        best_acc = eval_accc
-                        best_f1_score = f1_scoree
-                    if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 8 or epoch == 11)):
-                        for i in range(1):  # decay learning rate if necessary.
-                            print(i, "Going to decay learning rate by half.")
-                            sess.run(text_cnn.learning_rate_decay_half_op)
+        text_cnn, saver = self.create_model(sess, column_name, 0)
+        curr_epoch = sess.run(text_cnn.epoch_step)
+        iteration = 0
+        best_acc = 0.50
+        best_f1_score = 0.20
+        for epoch in range(curr_epoch, FLAGS.num_epochs):
+            loss, eval_acc, counter = 0.0, 0.0, 0
+            # train
+            for batch in self.train_batch_manager.iter_batch(shuffle=True):
+                iteration += 1
+                input_x, features_vector, input_y_dict = batch
+                input_y = input_y_dict[column_name]
+                # print("input_y:", input_y)
+                weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
+                feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
+                             text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
+                             text_cnn.iter: iteration}
+                curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
+                loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
+                if counter % 100 == 0:  # steps_check
+                    print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
+            print("going to increment epoch counter....")
+            sess.run(text_cnn.epoch_increment)
+            # valid
+            if epoch % FLAGS.validate_every == 0:
+                eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
+                print("【Validation】Epoch %d\t f_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f" % (epoch, f_0, f_1, f_2, f_3))
+                print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
+                # save model to checkpoint
+                if f1_scoree > best_f1_score:
+                    save_path = FLAGS.ckpt_dir + "/" + column_name + "/model.ckpt"
+                    print("going to save model. eval_f1_score:", f1_scoree, ";previous best f1 score:", best_f1_score,
+                          ";eval_acc", str(eval_accc), ";previous best_acc:", str(best_acc))
+                    saver.save(sess, save_path)
+                    best_acc = eval_accc
+                    best_f1_score = f1_scoree
+                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 14 or epoch == 18)):
+                    for i in range(1):  # decay learning rate if necessary.
+                        print(i, "Going to decay learning rate by half.")
+                        sess.run(text_cnn.learning_rate_decay_half_op)
 
     def create_model(self, sess, column_name, model_index):
         text_cnn = Bilstm()
