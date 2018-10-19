@@ -89,11 +89,29 @@ class Main:
             classifier.save_model(model_path)
         else:
             classifier = load_model(model_path)
-        result = classifier.test(valid_txt_path)
 
+    def evaluate(self):
+        # 基于预测值计算F值
+        column_name = self.columns[config.column_index]
+        model_path = os.path.join("ckpt", column_name + "_model")
+        string_valid_all = self.string_valid    # 验证集的评论语句
+        valid_label_list = self.label_valid_dict[column_name]   # 该评价对象的标签列表
+        classifier = load_model(model_path)
+        prediction_all = []
+        len_val_data = len(string_valid_all)
+        for i in range(len_val_data):
+            string = self.string_valid[i]
+            predict_tuple = classifier.predict(string)
+            # print(list(predict_tuple[0])[0])
+            predict = int(list(predict_tuple[0])[0][9:])
+            # print(predict)
+            prediction_all.append(predict)
+
+    # 结合get_word_vector方法和get_words方法获取最终训练得到的词向量
 
 if __name__ == "__main__":
     main = Main()
     main.load_data()
     # main.data_to_txt()
     main.train()
+    main.evaluate()
