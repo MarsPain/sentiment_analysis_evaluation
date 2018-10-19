@@ -8,7 +8,7 @@ import pickle
 import logging
 from fasttext_code import config
 from fasttext_code.utils import load_data_from_csv, write_to_txt
-from fasttext_code.data_utils import seg_words
+from fasttext_code.data_utils import seg_words, test_f_score_in_valid_data
 
 
 train_data_path = "../data/sentiment_analysis_trainingset.csv"
@@ -106,6 +106,7 @@ class Main:
             predict = int(list(predict_tuple[0])[0][9:])
             # print(predict)
             prediction_all.append(predict)
+        test_f_score_in_valid_data(valid_label_list, prediction_all)
 
     # 结合get_word_vector方法和get_words方法获取最终训练得到的词向量
 
