@@ -1,4 +1,4 @@
-column_index = 2
+column_index = 6
 num_classes = 4
 num_epochs = 35
 batch_size = 32

@@ -20,10 +20,10 @@ from TextCNN_code_single.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_3", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_5", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
-tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf_3.txt", "file for tfidf value dict")
+tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_trainingset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("test_data_path", "../data/sentiment_analysis_testa.csv", "path of traning data.")
@@ -33,6 +33,7 @@ tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.t
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for char")
+tf.app.flags.DEFINE_string("fasttext_word_vector_dir", "word_vector", "fasttext word vector dir")
 # 模型参数
 tf.app.flags.DEFINE_integer("num_classes", config.num_classes, "number of label class.")
 tf.app.flags.DEFINE_integer("num_epochs", config.num_epochs, "number of epochs to run.")
@@ -93,7 +94,7 @@ class Main:
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
-        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid_3.pkl")
+        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid.pkl")
         if os.path.exists(string_train_valid):  # 若word_label_path已存在
             with open(string_train_valid, 'rb') as f:
                 self.string_train, self.string_valid = pickle.load(f)
@@ -121,19 +122,19 @@ class Main:
         logger.info("start get dict")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
-        word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict_3.pkl")    # 存储word和label与index之间的双向映射字典
+        word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict.pkl")    # 存储word和label与index之间的双向映射字典
         if os.path.exists(word_label_dict):  # 若word_label_path已存在
             with open(word_label_dict, 'rb') as dict_f:
                 self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = pickle.load(dict_f)
         else:   # 重新读取训练数据并创建各个映射字典
             self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = \
                 create_dict(self.string_train, self.label_train_dict, word_label_dict, FLAGS.vocab_size)
-        print(len(self.word_to_index), self.word_to_index)
+        # print(len(self.word_to_index), self.word_to_index)
         logger.info("complete get dict")
 
     def get_data(self):
         logger.info("start get data")
-        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_3.pkl")
+        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_2.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
                 train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
@@ -243,10 +244,16 @@ class Main:
                 os.makedirs(model_save_dir)
             if FLAGS.use_pretrained_embedding:  # 加载预训练的词向量
                 print("===>>>going to use pretrained word embeddings...")
-                old_emb_matrix = sess.run(text_cnn.Embedding.read_value())
-                new_emb_matrix = load_word_embedding(old_emb_matrix, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
-                word_embedding = tf.constant(new_emb_matrix, dtype=tf.float32)  # 转为tensor
-                t_assign_embedding = tf.assign(text_cnn.Embedding, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
+                old_emb_matrix_word2vec = sess.run(text_cnn.Embedding_word2vec.read_value())
+                new_emb_matrix_word2vec = load_word_embedding(old_emb_matrix_word2vec, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
+                word_embedding_word2vec = tf.constant(new_emb_matrix_word2vec, dtype=tf.float32)  # 转为tensor
+                t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding_word2vec)  # 将word_embedding复制给text_cnn.Embedding
+                sess.run(t_assign_embedding)
+                old_emb_matrix_fasttext = sess.run(text_cnn.Embedding_fasttext.read_value())
+                fasttext_model_path = os.path.join(FLAGS.fasttext_word_vector_dir, column_name + "_fasttext.txt")
+                new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_fasttext, fasttext_model_path, FLAGS.embed_size, self.index_to_word)
+                word_embedding_fasttext = tf.constant(new_emb_matrix_fasttext, dtype=tf.float32)  # 转为tensor
+                t_assign_embedding = tf.assign(text_cnn.Embedding_fasttext, word_embedding_fasttext)  # 将word_embedding复制给text_cnn.Embedding
                 sess.run(t_assign_embedding)
                 print("using pre-trained word emebedding.ended...")
         return text_cnn, saver

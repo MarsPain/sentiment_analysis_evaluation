@@ -90,6 +90,8 @@ class Main:
             classifier.save_model(model_path)
         else:
             classifier = load_model(model_path)
+        test_result = classifier.test(valid_txt_path)
+        print(test_result)
 
     def evaluate(self):
         # 基于预测值计算F值
@@ -131,5 +133,5 @@ if __name__ == "__main__":
     main.load_data()
     # main.data_to_txt()
     main.train()
-    # main.evaluate()
+    main.evaluate()
     main.get_word_vector()

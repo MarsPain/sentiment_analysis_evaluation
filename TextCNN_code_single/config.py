@@ -3,12 +3,12 @@
 
 import os
 # ckpt
-column_index = 2
+column_index = 6
 num_classes = 4
 num_epochs = 35
 batch_size = 32
 vocab_size = 210000
-tokenize_style = "char"
+tokenize_style = "word"
 embed_size = 100
 filter_sizes = [3, 4, 5]
 num_filters = 128

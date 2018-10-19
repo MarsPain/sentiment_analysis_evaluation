@@ -23,7 +23,8 @@ class TextCNN:
         self.clip_gradients = config.clip_gradients
         self.top_k = config.top_k
         # 设置占位符和变量
-        self.Embedding = tf.get_variable("Embedding", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
+        self.Embedding_word2vec = tf.get_variable("Embedding_word2vec", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
+        self.Embedding_fasttext = tf.get_variable("Embedding_fasttext", shape=[self.vocab_size, self.embed_size], initializer=self.initializer, trainable=False)
         self.input_x = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x1")  # sentences
         # print("input_x:", self.input_x)
         self.features_vector = tf.placeholder(tf.float32, [None, self.sequence_length], name="features_vector")  # features_vector
@@ -47,20 +48,24 @@ class TextCNN:
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="Accuracy")
 
     def inference_cnn(self):
-        h_bluescore = tf.layers.dense(self.features_vector, self.hidden_size / 2, use_bias=True)   # features_vector
+        h_bluescore = tf.layers.dense(self.features_vector, self.hidden_size, use_bias=True)   # features_vector
         h_bluescore = tf.nn.relu(h_bluescore)
         # cnn features from sentences_1 and sentences_2
-        x = self.conv_layers(self.input_x, 1)  # [None,num_filters_total]
-        h_cnn = self.additive_attention(x, self.hidden_size / 2, "cnn_attention")
-        h = tf.concat([h_cnn, h_bluescore], axis=1)  # concat feature
+        x_1 = self.conv_layers(self.input_x, 1, self.Embedding_word2vec)  # [None,num_filters_total]
+        x_2 = self.conv_layers(self.input_x, 2, self.Embedding_fasttext)  # [None,num_filters_total]
+        x = tf.concat([x_1, x_2], axis=1)
+        # h_cnn = self.additive_attention(x, self.hidden_size, "cnn_attention")
+        # h = tf.concat([h_cnn, h_bluescore], axis=1)  # concat feature
+        h_cnn = self.additive_attention(x, self.hidden_size, "cnn_attention")
+        h = h_cnn
         h = tf.layers.dense(h, self.hidden_size, activation=tf.nn.relu, use_bias=True)  # fully connected layer
         h = tf.nn.dropout(h, keep_prob=self.dropout_keep_prob)
         with tf.name_scope("output"):
             logits = tf.layers.dense(h, self.num_classes, use_bias=False)
         return logits
 
-    def conv_layers(self, input_x, name_scope, reuse_flag=False):
-        embedded_words = tf.nn.embedding_lookup(self.Embedding, input_x)    # [None,sentence_length,embed_size]
+    def conv_layers(self, input_x, name_scope, embedding, reuse_flag=False):
+        embedded_words = tf.nn.embedding_lookup(embedding, input_x)    # [None,sentence_length,embed_size]
         # [None,sentence_length,embed_size,1] expand dimension so meet input requirement of 2d-conv
         sentence_embeddings_expanded = tf.expand_dims(embedded_words, -1)   # 词向量可以是多通道的
         pooled_outputs = []
