@@ -59,25 +59,15 @@ class Bilstm:
 
     def bilstm_layer(self, lstm_inputs):
         with tf.variable_scope("char_BiLSTM"):
-            lstm_cell = {}
-            for direction in ["forward", "backward"]:
-                with tf.variable_scope(direction):
-                    lstm_cell[direction] = rnn.CoupledInputForgetGateLSTMCell(
-                        self.lstm_dim,
-                        use_peepholes=True, initializer=self.initializer, state_is_tuple=True)
-            outputs, final_states = tf.nn.bidirectional_dynamic_rnn(
-                lstm_cell["forward"],
-                lstm_cell["backward"],
+            cell = tf.contrib.rnn.BasicLSTMCell(config.lstm_dim * 2)
+            outputs, final_states = tf.nn.dynamic_rnn(
+                cell,
                 lstm_inputs,
                 dtype=tf.float32,
                 time_major=False)
-        outputs_all = tf.concat(outputs, axis=2)
-        print("outputs:", outputs_all)
         # tf.transpose用于交换矩阵的维度，tf.unstack用于对矩阵进行分解，从而可以选取最后一个时间步的输出
-        outputs_all = tf.unstack(tf.transpose(outputs_all, [1, 0, 2]))
-        print("outputs:", outputs_all)
+        outputs_all = tf.unstack(tf.transpose(outputs, [1, 0, 2]))
         output_final = outputs_all[-1]
-        print("output_final:", output_final)
         return output_final
 
     def project_layer(self, lstm_outputs):
@@ -103,7 +93,6 @@ class Bilstm:
                 b = tf.get_variable("b", shape=[self.num_classes], dtype=tf.float32,
                                     initializer=tf.zeros_initializer())
                 pred = tf.nn.xw_plus_b(hidden, w, b)
-            # print("pred:", pred)
             return tf.reshape(pred, [-1, self.num_classes])
 
     def loss_layer(self):
