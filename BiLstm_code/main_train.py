@@ -68,7 +68,6 @@ class Main:
         self.label_weight_dict = None   # 存储标签权重
         self.train_batch_manager = None  # train数据batch生成类
         self.valid_batch_manager = None  # valid数据batch生成类
-        self.least_label_dict = None    # 获取每种评价对象的标签中数量最少的标签数量
         self.train_data = None  # 被打包好的训练数据
 
     def get_parser(self):
@@ -133,7 +132,7 @@ class Main:
         train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_2.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
-                self.train_data, valid_data, self.label_weight_dict, self.least_label_dict = pickle.load(data_f)
+                self.train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
             # 获取tfidf值并存储为tfidf字典
             if not os.path.exists(FLAGS.tfidf_path):
@@ -154,9 +153,8 @@ class Main:
             valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, FLAGS.max_len)
             # 从训练集中获取label_weight_dict（存储标签权重）
             self.label_weight_dict = get_labal_weight(self.train_data[2], self.columns, config.num_classes)
-            self.least_label_dict = get_least_label(self.train_data[2], self.columns)
             with open(train_valid_test, "wb") as f:
-                pickle.dump([self.train_data, valid_data, self.label_weight_dict, self.least_label_dict], f)
+                pickle.dump([self.train_data, valid_data, self.label_weight_dict], f)
         print("训练集大小：", len(self.train_data[0]), "验证集大小：", len(valid_data[0]))
         # 获取train、valid数据的batch生成类
         self.train_batch_manager = BatchManager(self.train_data, int(FLAGS.batch_size))

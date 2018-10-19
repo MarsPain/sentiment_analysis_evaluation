@@ -159,9 +159,9 @@ def get_labal_weight(label_dict, columns, num_classes):
                 label_2 += 1
             else:
                 label_3 += 1
-        # label_number_array = np.asarray([label_0, label_1, label_2, label_3])
-        # label_weight_list = len_data / (num_classes * label_number_array)
-        label_weight_list = [1, 1, 1, 1]    # 取消权重参数
+        label_number_array = np.asarray([label_0, label_1, label_2, label_3])
+        label_weight_list = len_data / (num_classes * label_number_array)
+        # label_weight_list = [1, 1, 1, 1]    # 取消权重参数
         # print(column, label_number_array, label_weight_list)
         label_weight_dict[column] = label_weight_list
     return label_weight_dict
