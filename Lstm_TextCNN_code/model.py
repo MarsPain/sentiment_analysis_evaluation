@@ -63,35 +63,22 @@ class Bilstm:
 
     def bilstm_layer(self, lstm_inputs):
         with tf.variable_scope("char_BiLSTM"):
-            cell = tf.contrib.rnn.BasicLSTMCell(config.lstm_dim * 2)
+            cell = tf.contrib.rnn.BasicLSTMCell(config.lstm_dim)
             outputs, final_states = tf.nn.dynamic_rnn(
                 cell,
                 lstm_inputs,
                 dtype=tf.float32,
                 time_major=False)
         # tf.transpose用于交换矩阵的维度，tf.unstack用于对矩阵进行分解，从而可以选取最后一个时间步的输出
-        outputs_all = tf.unstack(tf.transpose(outputs, [1, 0, 2]))
-        output_final = outputs_all[-1]
-
-        with tf.variable_scope("project"):
-            # 隐层的计算
-            with tf.variable_scope("hidden"):
-                w = tf.get_variable("W", shape=[self.lstm_dim*2, 255],
-                                    dtype=tf.float32, initializer=self.initializer)
-
-                b = tf.get_variable("b", shape=[255], dtype=tf.float32,
-                                    initializer=tf.zeros_initializer())
-                output = tf.reshape(output_final, shape=[-1, self.lstm_dim*2])
-                hidden = tf.tanh(tf.nn.xw_plus_b(output, w, b))
+        hidden = tf.reshape(outputs, [-1, self.sequence_length, config.lstm_dim])
         return hidden
 
     def inference_cnn(self):
         # cnn features from sentences_1 and sentences_2
-        x_1 = self.conv_layers(self.lstm_outputs, 1, self.Embedding_word2vec)  # [None,num_filters_total]
-        # x_2 = self.conv_layers(self.input_x, 2, self.Embedding_fasttext)  # [None,num_filters_total]
+        x_1 = self.conv_layers(1)  # [None,num_filters_total]
+        # x_2 = self.conv_layers(2)  # [None,num_filters_total]
         # x = tf.concat([x_1, x_2], axis=1)
         # h_cnn = self.additive_attention(x, self.hidden_size, "cnn_attention")
-        # h = tf.concat([h_cnn, h_bluescore], axis=1)  # concat feature
         h_cnn = self.additive_attention(x_1, self.hidden_size, "cnn_attention")
         h = h_cnn
         h = tf.layers.dense(h, self.hidden_size, activation=tf.nn.relu, use_bias=True)  # fully connected layer
@@ -100,17 +87,16 @@ class Bilstm:
             logits = tf.layers.dense(h, self.num_classes, use_bias=False)
         return logits
 
-    def conv_layers(self, input_x, name_scope, embedding, reuse_flag=False):
-        embedded_words = tf.nn.embedding_lookup(embedding, input_x)    # [None,sentence_length,embed_size]
-        # [None,sentence_length,embed_size,1] expand dimension so meet input requirement of 2d-conv
-        sentence_embeddings_expanded = tf.expand_dims(embedded_words, -1)   # 词向量可以是多通道的
+    def conv_layers(self, name_scope, reuse_flag=False):
+        lstm_outputs_expanded = tf.expand_dims(self.lstm_outputs, -1)
+        # print("lstm_outputs_expanded:", lstm_outputs_expanded)
         pooled_outputs = []
         for i, filter_size in enumerate(self.filter_sizes):
             with tf.variable_scope(str(name_scope)+"convolution-pooling-%s" % filter_size, reuse=reuse_flag):
                 # 1.create filter
-                filters = tf.get_variable("filter-%s" % filter_size, [filter_size, self.embed_size, 1, self.num_filters], initializer=self.initializer)
+                filters = tf.get_variable("filter-%s" % filter_size, [filter_size, self.lstm_dim, 1, self.num_filters], initializer=self.initializer)
                 # 2.conv operation: conv2d===>computes a 2-D convolution given 4-D `input` and `filter` tensors.
-                conv = tf.nn.conv2d(sentence_embeddings_expanded, filters, strides=[1, 1, 1, 1],
+                conv = tf.nn.conv2d(lstm_outputs_expanded, filters, strides=[1, 1, 1, 1],
                                     padding="VALID", name="conv")   # shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]
                 # print("conv:", conv)
                 # 3. apply nolinearity
@@ -139,11 +125,13 @@ class Bilstm:
             h = g*tf.nn.relu(x + b)  # [batch_size,hidden_size]
         return h
 
-    def loss_layer(self):
+    def loss_layer(self, l2_lambda=0.0003):
         with tf.name_scope("loss"):
             losses = tf.losses.sparse_softmax_cross_entropy(self.input_y, self.logits, weights=self.weights)
             loss_main = tf.reduce_mean(losses)
-        return loss_main
+            l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
+            loss = loss_main+l2_losses
+        return loss
 
     def train(self):
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, 1, 1, staircase=True)

@@ -20,7 +20,7 @@ from Lstm_TextCNN_code.model import Bilstm
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_2", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -136,7 +136,7 @@ class Main:
         else:   # 读取数据集并创建训练集、验证集
             # 获取tfidf值并存储为tfidf字典
             if not os.path.exists(FLAGS.tfidf_path):
-                get_tfidf_and_save(self.string_train, FLAGS.tfidf_path)
+                get_tfidf_and_save(self.string_train, FLAGS.tfidf_path, FLAGS.tokenize_style)
             tfidf_dict = load_tfidf_dict(FLAGS.tfidf_path)
             # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
             train_vector_tfidf = get_vector_tfidf(self.string_train, tfidf_dict)
@@ -239,10 +239,10 @@ class Main:
                 os.makedirs(model_save_dir)
             if FLAGS.use_pretrained_embedding:  # 加载预训练的词向量
                 print("===>>>going to use pretrained word embeddings...")
-                old_emb_matrix = sess.run(text_cnn.Embedding.read_value())
+                old_emb_matrix = sess.run(text_cnn.Embedding_word2vec.read_value())
                 new_emb_matrix = load_word_embedding(old_emb_matrix, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
                 word_embedding = tf.constant(new_emb_matrix, dtype=tf.float32)  # 转为tensor
-                t_assign_embedding = tf.assign(text_cnn.Embedding, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
+                t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
                 sess.run(t_assign_embedding)
                 print("using pre-trained word emebedding.ended...")
         return text_cnn, saver
