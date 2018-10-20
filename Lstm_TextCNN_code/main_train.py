@@ -6,17 +6,17 @@ import csv
 import json
 from collections import OrderedDict
 import pickle
-from BiLstm_code import config
+from Lstm_TextCNN_code import config
 import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import argparse
-from BiLstm_code.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
+from Lstm_TextCNN_code.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
     get_vector_tfidf, BatchManager, get_max_len, get_weights_for_current_batch, compute_confuse_matrix,\
     get_labal_weight, get_least_label, afresh_sampling
-from BiLstm_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
+from Lstm_TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
-from BiLstm_code.model import Bilstm
+from Lstm_TextCNN_code.model import Bilstm
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数

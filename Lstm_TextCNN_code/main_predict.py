@@ -1,4 +1,4 @@
-from BiLstm_code import config
+from Lstm_TextCNN_code import config
 import logging
 from sklearn.externals import joblib
 import pickle
@@ -8,10 +8,10 @@ import os
 import tensorflow as tf
 import math
 import random
-from BiLstm_code.data_utils import seg_words, get_vector_tfidf
-from BiLstm_code.utils import load_data_from_csv, load_tfidf_dict,\
+from Lstm_TextCNN_code.data_utils import seg_words, get_vector_tfidf
+from Lstm_TextCNN_code.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding
-from BiLstm_code.model import TextCNN
+from Lstm_TextCNN_code.model import TextCNN
 from TextCNN_code_single.confidence_adjust import adjust_confidence, automatic_search
 
 PAD_ID = 0

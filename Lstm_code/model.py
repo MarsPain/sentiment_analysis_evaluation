@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from BiLstm_code import config
-import BiLstm_code.rnncell as rnn
+from Lstm_code import config
+import Lstm_code.rnncell as rnn
 
 
 class Bilstm:
