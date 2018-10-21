@@ -27,7 +27,6 @@ test_data_predict_out_path = "result.csv"
 models_dir = "ckpt_3"
 word_label_dict = "pkl/word_label_dict_3.pkl"
 tfidf_path = "data/tfidf.txt"
-word2vec_model_path = "data/word2vec_word_model.txt"
 log_predict_error_dir = "error_log"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
@@ -123,13 +122,6 @@ def create_model(sess, index_to_word):
     text_cnn = TextCNN()
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
-    print("===>>>going to use pretrained word embeddings...")
-    old_emb_matrix = sess.run(text_cnn.Embedding.read_value())
-    new_emb_matrix = load_word_embedding(old_emb_matrix, word2vec_model_path, config.embed_size, index_to_word)
-    word_embedding = tf.constant(new_emb_matrix, dtype=tf.float32)  # 转为tensor
-    t_assign_embedding = tf.assign(text_cnn.Embedding, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
-    sess.run(t_assign_embedding)
-    print("using pre-trained word emebedding.ended...")
     return text_cnn, saver
 
 

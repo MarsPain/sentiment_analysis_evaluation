@@ -24,7 +24,7 @@ class TextCNN:
         self.top_k = config.top_k
         # 设置占位符和变量
         self.Embedding_word2vec = tf.get_variable("Embedding_word2vec", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
-        self.Embedding_fasttext = tf.get_variable("Embedding_fasttext", shape=[self.vocab_size, self.embed_size], initializer=self.initializer, trainable=False)
+        self.Embedding_fasttext = tf.get_variable("Embedding_fasttext", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
         self.input_x = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x1")  # sentences
         # print("input_x:", self.input_x)
         self.features_vector = tf.placeholder(tf.float32, [None, self.sequence_length], name="features_vector")  # features_vector
@@ -53,11 +53,9 @@ class TextCNN:
         # cnn features from sentences_1 and sentences_2
         x_1 = self.conv_layers(self.input_x, 1, self.Embedding_word2vec)  # [None,num_filters_total]
         x_2 = self.conv_layers(self.input_x, 2, self.Embedding_fasttext)  # [None,num_filters_total]
-        x = tf.concat([x_1, x_2], axis=1)
-        # h_cnn = self.additive_attention(x, self.hidden_size, "cnn_attention")
-        # h = tf.concat([h_cnn, h_bluescore], axis=1)  # concat feature
-        h_cnn = self.additive_attention(x, self.hidden_size, "cnn_attention")
-        h = h_cnn
+        h_cnn_1 = self.additive_attention(x_1, self.hidden_size / 2, "cnn_attention_1")
+        h_cnn_2 = self.additive_attention(x_2, self.hidden_size / 2, "cnn_attention_2")
+        h = tf.concat([h_cnn_1, h_cnn_2], axis=1)
         h = tf.layers.dense(h, self.hidden_size, activation=tf.nn.relu, use_bias=True)  # fully connected layer
         h = tf.nn.dropout(h, keep_prob=self.dropout_keep_prob)
         with tf.name_scope("output"):
