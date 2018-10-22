@@ -13,14 +13,15 @@ import os
 import argparse
 from TextCNN_code_ensemble.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
     get_vector_tfidf, BatchManager, get_max_len, get_weights_for_current_batch, compute_confuse_matrix,\
-    get_labal_weight, get_least_label, afresh_sampling
+    get_labal_weight, get_least_label, afresh_sampling, get_sample_weights, get_weights_for_current_batch_and_sample,\
+    get_f_scores_all
 from TextCNN_code_ensemble.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code_ensemble.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_2", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -194,22 +195,43 @@ class Main:
             iteration = 0
             best_acc = 0.50
             best_f1_score = 0.20
-            print("训练集批次数量：", train_batch_sample_manager.len_data)
+            batch_num = train_batch_sample_manager.len_data
+            print("训练集批次数量：", batch_num)
+            sample_weights_list = []
+            for batch in train_batch_sample_manager.iter_batch(shuffle=False):
+                input_x, features_vector, input_y = batch
+                sample_weights_list.append([1 for i in range(len(input_x))])
             for epoch in range(curr_epoch, FLAGS.num_epochs):
                 loss, eval_acc, counter = 0.0, 0.0, 0
+                sample_weights_list_new = []
                 # train
-                for batch in train_batch_sample_manager.iter_batch(shuffle=True):
+                input_y_all = []
+                predictions_all = []
+                for batch in train_batch_sample_manager.iter_batch(shuffle=False):
                     iteration += 1
                     input_x, features_vector, input_y = batch
+                    input_y_all.extend(input_y)
                     # print("input_y:", input_y)
-                    weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
+                    index = iteration % batch_num - 1 if iteration % batch_num != 0 else batch_num - 1
+                    sample_weights_mini_list = sample_weights_list[index]
+                    weights = get_weights_for_current_batch_and_sample(input_y, self.label_weight_dict[column_name], sample_weights_mini_list)   # 根据类别权重参数更新训练集各标签的权重
                     feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
                                  text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
                                  text_cnn.iter: iteration}
-                    curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
+                    curr_loss, curr_acc, lr, _, predictions = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op, text_cnn.predictions],
+                                                                       feed_dict)
+                    predictions_all.extend(predictions)
                     loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                    if counter % 100 == 0:  # steps_check
+                    # predictions = list(predictions[0])
+                    # print("predictions:", predictions, len(predictions))
+                    sample_weights_mini_list_new = get_sample_weights(input_y, predictions, sample_weights_mini_list)
+                    sample_weights_list_new.append(sample_weights_mini_list_new)
+                    if counter % 10 == 0:  # steps_check
                         print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
+                sample_weights_list = sample_weights_list_new
+                f_0, f_1, f_2, f_3 = get_f_scores_all(predictions_all, input_y_all, 0.00001)  # test_f_score_in_valid_data
+                print("f_0, f_1, f_2, f_3:", f_0, f_1, f_2, f_3)
+                print("f1_score:", (f_0 + f_1 + f_2 + f_3) / 4)
                 print("going to increment epoch counter....")
                 sess.run(text_cnn.epoch_increment)
                 # valid

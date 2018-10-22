@@ -310,6 +310,21 @@ class SampleBatchManager:
             yield self.batch_data[idx]
 
 
+def get_weights_for_current_batch_and_sample(answer_list, weights_dict, sample_weights_mini_list):
+    weights_list_batch = list(np.ones((len(answer_list))))
+    answer_list = list(answer_list)
+    for i, label in enumerate(answer_list):
+        if label == 0:
+            weights_list_batch[i] = weights_dict[0] * sample_weights_mini_list[i]
+        elif label == 1:
+            weights_list_batch[i] = weights_dict[1] * sample_weights_mini_list[i]
+        elif label == 2:
+            weights_list_batch[i] = weights_dict[2] * sample_weights_mini_list[i]
+        else:
+            weights_list_batch[i] = weights_dict[3] * sample_weights_mini_list[i]
+    return weights_list_batch
+
+
 def get_weights_for_current_batch(answer_list, weights_dict):
     weights_list_batch = list(np.ones((len(answer_list))))
     answer_list = list(answer_list)
@@ -323,6 +338,79 @@ def get_weights_for_current_batch(answer_list, weights_dict):
         else:
             weights_list_batch[i] = weights_dict[3]
     return weights_list_batch
+
+
+def get_sample_weights(label, predictions, sample_weights_mini_list):
+    for i in range(len(label)):
+        predict = predictions[i]
+        # 用于计算1的精确率和召回率
+        if (label[i] == 0 or label[i] == 2 or label[i] == 3) and predict == 1:
+            sample_weights_mini_list[i] *= 2
+        elif label[i] == 1 and (predict == 0 or predict == 2 or predict == 3):
+            sample_weights_mini_list[i] *= 2
+    return sample_weights_mini_list
+
+
+def get_f_scores_all(predictions_all, label, small_value):
+    length = len(label)
+    true_positive_0 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_0 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_0 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_1 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_1 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_1 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_2 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_2 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_2 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    true_positive_3 = 0  # TP:if label is true('0'), and predict is true('0')
+    false_positive_3 = 0  # FP:if label is false('1,2,3'),but predict is ture('0')
+    false_negative_3 = 0  # FN:if label is true('0'),but predict is false('1,2,3')
+    for i in range(length):
+        # 用于计算0的精确率和召回率
+        if label[i] == 0 and predictions_all[i] == 0:
+            true_positive_0 += 1
+        elif (label[i] == 1 or label[i] == 2 or label[i] == 3) and predictions_all[i] == 0:
+            false_positive_0 += 1
+        elif label[i] == 0 and (predictions_all[i] == 1 or predictions_all[i] == 2 or predictions_all == 3):
+            false_negative_0 += 1
+        # 用于计算1的精确率和召回率
+        if label[i] == 1 and predictions_all[i] == 1:
+            true_positive_1 += 1
+        elif (label[i] == 0 or label[i] == 2 or label[i] == 3) and predictions_all[i] == 1:
+            false_positive_1 += 1
+        elif label[i] == 1 and (predictions_all[i] == 0 or predictions_all[i] == 2 or predictions_all[i] == 3):
+            false_negative_1 += 1
+        # 用于计算2的精确率和召回率
+        if label[i] == 2 and predictions_all[i] == 2:
+            true_positive_2 += 1
+        elif (label[i] == 0 or label[i] == 1 or label[i] == 3) and predictions_all[i] == 2:
+            false_positive_2 += 1
+        elif label[i] == 2 and (predictions_all[i] == 0 or predictions_all[i] == 1 or predictions_all[i] == 3):
+            false_negative_2 += 1
+        # 用于计算3的精确率和召回率
+        if label[i] == 3 and predictions_all[i] == 3:
+            true_positive_3 += 1
+        elif (label[i] == 0 or label[i] == 1 or label[i] == 2) and predictions_all[i] == 3:
+            false_positive_3 += 1
+        elif label[i] == 3 and (predictions_all[i] == 0 or predictions_all[i] == 1 or predictions_all[i] == 2):
+            false_negative_3 += 1
+    p_0 = float(true_positive_0)/float(true_positive_0+false_positive_0+small_value)
+    r_0 = float(true_positive_0)/float(true_positive_0+false_negative_0+small_value)
+    # print("标签0的预测情况：", true_positive_0, false_positive_0, false_negative_0, p_0, r_0)
+    f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
+    p_1 = float(true_positive_1)/float(true_positive_1+false_positive_1+small_value)
+    r_1 = float(true_positive_1)/float(true_positive_1+false_negative_1+small_value)
+    # print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1, p_1, r_1)
+    f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
+    p_2 = float(true_positive_2)/float(true_positive_2+false_positive_2+small_value)
+    r_2 = float(true_positive_2)/float(true_positive_2+false_negative_2+small_value)
+    # print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2, p_2, r_2)
+    f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
+    p_3 = float(true_positive_3)/float(true_positive_3+false_positive_3+small_value)
+    r_3 = float(true_positive_3)/float(true_positive_3+false_negative_3+small_value)
+    # print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3, p_3, r_3)
+    f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
+    return f_0, f_1, f_2, f_3
 
 
 def compute_confuse_matrix(logit, label, small_value):

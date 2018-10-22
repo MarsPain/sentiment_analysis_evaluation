@@ -37,3 +37,10 @@ import pandas as pd
 # value = np.bincount(y)
 # print(type(value), value)
 # print(10 / (2 * value))
+
+# l = [1 for i in range(10)]
+# for i in range(1, 20):
+#     print((i-1)%4, i%4)
+#     print(l[((i-1)%4)*3: (i%4)*3])
+# l = [1, 2, 3]
+# print(l[(2)])
