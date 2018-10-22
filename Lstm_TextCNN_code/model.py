@@ -25,7 +25,7 @@ class Bilstm:
         self.top_k = config.top_k
         # 设置占位符和变量
         self.Embedding_word2vec = tf.get_variable("Embedding_word2vec", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
-        self.Embedding_fasttext = tf.get_variable("Embedding_fasttext", shape=[self.vocab_size, self.embed_size], initializer=self.initializer, trainable=False)
+        self.Embedding_fasttext = tf.get_variable("Embedding_fasttext", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
         self.input_x = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x1")  # sentences
         # print("input_x:", self.input_x)
         self.features_vector = tf.placeholder(tf.float32, [None, self.sequence_length], name="features_vector")  # features_vector
@@ -56,7 +56,7 @@ class Bilstm:
         :return:[batch_size, num_steps, embedding size]
         """
         embedding_list = []
-        embedded_words = tf.nn.embedding_lookup(self.Embedding_word2vec, self.input_x)
+        embedded_words = tf.nn.embedding_lookup(self.Embedding_fasttext, self.input_x)
         embedding_list.append(embedded_words)
         embed = tf.concat(embedding_list, axis=-1)
         return embed
@@ -75,11 +75,8 @@ class Bilstm:
 
     def inference_cnn(self):
         # cnn features from sentences_1 and sentences_2
-        x_1 = self.conv_layers(1)  # [None,num_filters_total]
-        # x_2 = self.conv_layers(2)  # [None,num_filters_total]
-        # x = tf.concat([x_1, x_2], axis=1)
-        # h_cnn = self.additive_attention(x, self.hidden_size, "cnn_attention")
-        h_cnn = self.additive_attention(x_1, self.hidden_size, "cnn_attention")
+        x = self.conv_layers(1)  # [None,num_filters_total]
+        h_cnn = self.additive_attention(x, self.hidden_size / 2, "cnn_attention")
         h = h_cnn
         h = tf.layers.dense(h, self.hidden_size, activation=tf.nn.relu, use_bias=True)  # fully connected layer
         h = tf.nn.dropout(h, keep_prob=self.dropout_keep_prob)

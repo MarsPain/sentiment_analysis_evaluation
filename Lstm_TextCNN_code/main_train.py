@@ -13,14 +13,15 @@ import os
 import argparse
 from Lstm_TextCNN_code.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
     get_vector_tfidf, BatchManager, get_max_len, get_weights_for_current_batch, compute_confuse_matrix,\
-    get_labal_weight, get_least_label, afresh_sampling
+    get_labal_weight, get_least_label, afresh_sampling, get_weights_for_current_batch_and_sample,\
+    get_sample_weights, get_f_scores_all
 from Lstm_TextCNN_code.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding
 from Lstm_TextCNN_code.model import Bilstm
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_2", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -31,6 +32,7 @@ tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.t
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for char")
+tf.app.flags.DEFINE_string("fasttext_word_vector_dir", "word_vector", "fasttext word vector dir")
 # 模型参数
 tf.app.flags.DEFINE_integer("num_classes", config.num_classes, "number of label class.")
 tf.app.flags.DEFINE_integer("num_epochs", config.num_epochs, "number of epochs to run.")
@@ -185,22 +187,42 @@ class Main:
         iteration = 0
         best_acc = 0.50
         best_f1_score = 0.20
+        batch_num = self.train_batch_manager.len_data
+        sample_weights_list = []
+        for batch in self.train_batch_manager.iter_batch(shuffle=False):
+            input_x, _, _ = batch
+            sample_weights_list.append([1 for i in range(len(input_x))])
         for epoch in range(curr_epoch, FLAGS.num_epochs):
             loss, eval_acc, counter = 0.0, 0.0, 0
+            sample_weights_list_new = []
+            input_y_all = []
+            predictions_all = []
             # train
-            for batch in self.train_batch_manager.iter_batch(shuffle=True):
+            for batch in self.train_batch_manager.iter_batch(shuffle=False):
                 iteration += 1
                 input_x, features_vector, input_y_dict = batch
                 input_y = input_y_dict[column_name]
+                input_y_all.extend(input_y)
                 # print("input_y:", input_y)
-                weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
+                index = iteration % batch_num - 1 if iteration % batch_num != 0 else batch_num - 1
+                sample_weights_mini_list = sample_weights_list[index]
+                weights = get_weights_for_current_batch_and_sample(input_y, self.label_weight_dict[column_name], sample_weights_mini_list)   # 根据类别权重参数更新训练集各标签的权重
+                # weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
                 feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
                              text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
                              text_cnn.iter: iteration}
-                curr_loss, curr_acc, lr, _ = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op], feed_dict)
+                curr_loss, curr_acc, lr, _, predictions = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op, text_cnn.predictions],
+                                                                   feed_dict)
+                predictions_all.extend(predictions)
                 loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
+                sample_weights_mini_list_new = get_sample_weights(input_y, predictions, sample_weights_mini_list)
+                sample_weights_list_new.append(sample_weights_mini_list_new)
                 if counter % 100 == 0:  # steps_check
                     print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
+            sample_weights_list = sample_weights_list_new
+            f_0, f_1, f_2, f_3 = get_f_scores_all(predictions_all, input_y_all, 0.00001)  # test_f_score_in_valid_data
+            print("f_0, f_1, f_2, f_3:", f_0, f_1, f_2, f_3)
+            print("f1_score:", (f_0 + f_1 + f_2 + f_3) / 4)
             print("going to increment epoch counter....")
             sess.run(text_cnn.epoch_increment)
             # valid
@@ -216,7 +238,7 @@ class Main:
                     saver.save(sess, save_path)
                     best_acc = eval_accc
                     best_f1_score = f1_scoree
-                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 14 or epoch == 18)):
+                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 10 or epoch == 20 or epoch == 30 or epoch == 40)):
                     for i in range(1):  # decay learning rate if necessary.
                         print(i, "Going to decay learning rate by half.")
                         sess.run(text_cnn.learning_rate_decay_half_op)
@@ -239,10 +261,11 @@ class Main:
                 os.makedirs(model_save_dir)
             if FLAGS.use_pretrained_embedding:  # 加载预训练的词向量
                 print("===>>>going to use pretrained word embeddings...")
-                old_emb_matrix = sess.run(text_cnn.Embedding_word2vec.read_value())
-                new_emb_matrix = load_word_embedding(old_emb_matrix, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
-                word_embedding = tf.constant(new_emb_matrix, dtype=tf.float32)  # 转为tensor
-                t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding)  # 将word_embedding复制给text_cnn.Embedding
+                old_emb_matrix_fasttext = sess.run(text_cnn.Embedding_fasttext.read_value())
+                fasttext_model_path = os.path.join(FLAGS.fasttext_word_vector_dir, column_name + "_fasttext.txt")
+                new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_fasttext, fasttext_model_path, FLAGS.embed_size, self.index_to_word)
+                word_embedding_fasttext = tf.constant(new_emb_matrix_fasttext, dtype=tf.float32)  # 转为tensor
+                t_assign_embedding = tf.assign(text_cnn.Embedding_fasttext, word_embedding_fasttext)  # 将word_embedding复制给text_cnn.Embedding
                 sess.run(t_assign_embedding)
                 print("using pre-trained word emebedding.ended...")
         return text_cnn, saver
