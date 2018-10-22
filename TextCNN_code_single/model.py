@@ -48,8 +48,6 @@ class TextCNN:
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="Accuracy")
 
     def inference_cnn(self):
-        h_bluescore = tf.layers.dense(self.features_vector, self.hidden_size, use_bias=True)   # features_vector
-        h_bluescore = tf.nn.relu(h_bluescore)
         # cnn features from sentences_1 and sentences_2
         # x_1 = self.conv_layers(self.input_x, 1, self.Embedding_word2vec)  # [None,num_filters_total]
         x_2 = self.conv_layers(self.input_x, 2, self.Embedding_fasttext)  # [None,num_filters_total]
