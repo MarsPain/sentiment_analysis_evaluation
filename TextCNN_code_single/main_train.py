@@ -20,7 +20,7 @@ from TextCNN_code_single.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_3", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_5", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -218,11 +218,11 @@ class Main:
                                                                    feed_dict)
                 predictions_all.extend(predictions)
                 loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                sample_weights_mini_list_new = get_sample_weights(input_y, predictions, sample_weights_mini_list)
-                sample_weights_list_new.append(sample_weights_mini_list_new)
+                # sample_weights_mini_list_new = get_sample_weights(input_y, predictions, sample_weights_mini_list)
+                # sample_weights_list_new.append(sample_weights_mini_list_new)
                 if counter % 100 == 0:  # steps_check
                     print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
-            sample_weights_list = sample_weights_list_new
+            # sample_weights_list = sample_weights_list_new
             f_0, f_1, f_2, f_3 = get_f_scores_all(predictions_all, input_y_all, 0.00001)  # test_f_score_in_valid_data
             print("f_0, f_1, f_2, f_3:", f_0, f_1, f_2, f_3)
             print("f1_score:", (f_0 + f_1 + f_2 + f_3) / 4)
@@ -241,7 +241,7 @@ class Main:
                     saver.save(sess, save_path)
                     best_acc = eval_accc
                     best_f1_score = f1_scoree
-                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 5 or epoch == 10 or epoch == 14 or epoch == 18)):
+                if FLAGS.decay_lr_flag and (epoch != 0 and (epoch == 10 or epoch == 20 or epoch == 30 or epoch == 40)):
                     for i in range(1):  # decay learning rate if necessary.
                         print(i, "Going to decay learning rate by half.")
                         sess.run(text_cnn.learning_rate_decay_half_op)
@@ -264,11 +264,11 @@ class Main:
                 os.makedirs(model_save_dir)
             if FLAGS.use_pretrained_embedding:  # 加载预训练的词向量
                 print("===>>>going to use pretrained word embeddings...")
-                old_emb_matrix_word2vec = sess.run(text_cnn.Embedding_word2vec.read_value())
-                new_emb_matrix_word2vec = load_word_embedding(old_emb_matrix_word2vec, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
-                word_embedding_word2vec = tf.constant(new_emb_matrix_word2vec, dtype=tf.float32)  # 转为tensor
-                t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding_word2vec)  # 将word_embedding复制给text_cnn.Embedding
-                sess.run(t_assign_embedding)
+                # old_emb_matrix_word2vec = sess.run(text_cnn.Embedding_word2vec.read_value())
+                # new_emb_matrix_word2vec = load_word_embedding(old_emb_matrix_word2vec, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
+                # word_embedding_word2vec = tf.constant(new_emb_matrix_word2vec, dtype=tf.float32)  # 转为tensor
+                # t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding_word2vec)  # 将word_embedding复制给text_cnn.Embedding
+                # sess.run(t_assign_embedding)
                 old_emb_matrix_fasttext = sess.run(text_cnn.Embedding_fasttext.read_value())
                 fasttext_model_path = os.path.join(FLAGS.fasttext_word_vector_dir, column_name + "_fasttext.txt")
                 new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_fasttext, fasttext_model_path, FLAGS.embed_size, self.index_to_word)
