@@ -89,18 +89,25 @@ def create_dict(string_train, label_list, path, vocab_size):
     return word_to_index, index_to_word, label_to_index, index_to_label
 
 
-def get_vector_tfidf(string, tfidf_dict):
-    vector_tfidf_list = []
-    for s in string:
-        vector_tfidf = []
-        word_list = s.split(" ")
+def get_vector_tfidf(string_list, vectorizer_tfidf, word_dict):
+    vector_tfidf_list = vectorizer_tfidf.transform(string_list)
+    # print(vector_tfidf_list[0])
+    # print(vector_tfidf_list[0].toarray())
+    len_data = len(string_list)
+    string_vector_tfidf_list = []
+    for i in range(len_data):
+        string = string_list[i]
+        vector_tfidf = vector_tfidf_list[i].toarray()[0]
+        string_vector_tfidf = []
+        word_list = string.split(" ")
         for word in word_list:
-            if word in tfidf_dict:
-                vector_tfidf.append(tfidf_dict[word])
+            # print(vector_tfidf, word_dict[word])
+            if word in word_dict:
+                string_vector_tfidf.append(vector_tfidf[word_dict[word]])
             else:
-                vector_tfidf.append(1)
-        vector_tfidf_list.append(vector_tfidf)
-    return vector_tfidf_list
+                string_vector_tfidf.append(1)
+        string_vector_tfidf_list.append(string_vector_tfidf)
+    return string_vector_tfidf_list
 
 
 # def get_label_pert(train_data_df, columns):

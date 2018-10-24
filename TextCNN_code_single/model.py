@@ -48,13 +48,16 @@ class TextCNN:
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="Accuracy")
 
     def inference_cnn(self):
+        h_bluescore = tf.layers.dense(self.features_vector, self.hidden_size / 2, use_bias=False)   # features_vector
+        h_bluescore = tf.nn.relu(h_bluescore)
         # cnn features from sentences_1 and sentences_2
         # x_1 = self.conv_layers(self.input_x, 1, self.Embedding_word2vec)  # [None,num_filters_total]
         x_2 = self.conv_layers(self.input_x, 2, self.Embedding_fasttext)  # [None,num_filters_total]
         # h_cnn_1 = self.additive_attention(x_1, self.hidden_size / 2, "cnn_attention_1")
         h_cnn_2 = self.additive_attention(x_2, self.hidden_size / 2, "cnn_attention_2")
+        h = tf.concat([h_cnn_2, h_bluescore], axis=1)  # concat feature
         # h = tf.concat([h_cnn_1, h_cnn_2], axis=1)
-        h = tf.layers.dense(h_cnn_2, self.hidden_size, activation=tf.nn.relu, use_bias=True)  # fully connected layer
+        h = tf.layers.dense(h, self.hidden_size, activation=tf.nn.relu, use_bias=False)  # fully connected layer
         h = tf.nn.dropout(h, keep_prob=self.dropout_keep_prob)
         with tf.name_scope("output"):
             logits = tf.layers.dense(h, self.num_classes, use_bias=False)
