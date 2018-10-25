@@ -89,6 +89,20 @@ def create_dict(string_train, label_list, path, vocab_size):
     return word_to_index, index_to_word, label_to_index, index_to_label
 
 
+def get_vector_tfidf_from_dict(string, tfidf_dict):
+    vector_tfidf_list = []
+    for s in string:
+        vector_tfidf = []
+        word_list = s.split(" ")
+        for word in word_list:
+            if word in tfidf_dict:
+                vector_tfidf.append(tfidf_dict[word])
+            else:
+                vector_tfidf.append(1)
+        vector_tfidf_list.append(vector_tfidf)
+    return vector_tfidf_list
+
+
 def get_vector_tfidf(string_list, vectorizer_tfidf, word_dict):
     vector_tfidf_list = vectorizer_tfidf.transform(string_list)
     # print(vector_tfidf_list[0])

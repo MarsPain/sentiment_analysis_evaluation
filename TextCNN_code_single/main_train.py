@@ -13,16 +13,19 @@ import os
 import argparse
 from TextCNN_code_single.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
     get_vector_tfidf, BatchManager, get_max_len, get_weights_for_current_batch, compute_confuse_matrix,\
-    get_labal_weight, get_weights_for_current_batch_and_sample, get_sample_weights, get_f_scores_all
+    get_labal_weight, get_weights_for_current_batch_and_sample, get_sample_weights, get_f_scores_all,\
+    get_vector_tfidf_from_dict
 from TextCNN_code_single.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
-    load_word_embedding
+    load_word_embedding, get_tfidf_dict_and_save, get_idf_dict_and_save
 from TextCNN_code_single.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_3", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_5", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
+tf.app.flags.DEFINE_string("tfidf_dict_path", "./data/tfidf.txt", "file for tfidf value dict")
+tf.app.flags.DEFINE_string("idf_dict_path", "./data/idf.txt", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("tfidf_path", "./pkl/tfidf.pkl", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_trainingset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
@@ -134,20 +137,34 @@ class Main:
 
     def get_data(self):
         logger.info("start get data")
-        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_4.pkl")
+        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_5.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
                 train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
-            # 获取tfidf值并存储为tfidf字典
-            if not os.path.exists(FLAGS.tfidf_path):
-                vectorizer_tfidf, word_list_sort_dict = get_tfidf_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
-            else:
-                with open(FLAGS.tfidf_path, "rb") as f:
-                    vectorizer_tfidf, word_list_sort_dict = pickle.load(f)
-            # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
-            train_vector_tfidf = get_vector_tfidf(self.string_train, vectorizer_tfidf, word_list_sort_dict)
-            valid_vector_tfidf = get_vector_tfidf(self.string_valid, vectorizer_tfidf, word_list_sort_dict)
+            # # 获取tfidf值并存储为tfidf字典
+            # if not os.path.exists(FLAGS.tfidf_path):
+            #     get_tfidf_dict_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
+            # tfidf_dict = load_tfidf_dict(FLAGS.tfidf_path)
+            # # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
+            # train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, tfidf_dict)
+            # valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, tfidf_dict)
+            # 获取idf值并存储为idf字典
+            if not os.path.exists(FLAGS.idf_dict_path):
+                get_idf_dict_and_save(self.string_train, FLAGS.idf_dict_path, config.tokenize_style)
+            idf_dict = load_tfidf_dict(FLAGS.idf_dict_path)
+            # 根据idf_dict获取训练集和验证集的idf值向量作为额外的特征向量
+            train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, idf_dict)
+            valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, idf_dict)
+            # # 获取tfidf模型以及已被排序的字典
+            # if not os.path.exists(FLAGS.tfidf_path):
+            #     vectorizer_tfidf, word_list_sort_dict = get_tfidf_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
+            # else:
+            #     with open(FLAGS.tfidf_path, "rb") as f:
+            #         vectorizer_tfidf, word_list_sort_dict = pickle.load(f)
+            # # 根据tfidf模型以及已被排序的字典获取训练集和验证集的tfidf值向量作为额外的特征向量
+            # train_vector_tfidf = get_vector_tfidf(self.string_train, vectorizer_tfidf, word_list_sort_dict)
+            # valid_vector_tfidf = get_vector_tfidf(self.string_valid, vectorizer_tfidf, word_list_sort_dict)
             # print(train_vector_tfidf[0])
             # 语句序列化，将句子中的word和label映射成index，作为模型输入
             sentences_train, self.label_train_dict = sentence_word_to_index(self.string_train, self.word_to_index, self.label_train_dict, self.label_to_index)
@@ -271,9 +288,10 @@ class Main:
                 # word_embedding_word2vec = tf.constant(new_emb_matrix_word2vec, dtype=tf.float32)  # 转为tensor
                 # t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding_word2vec)  # 将word_embedding复制给text_cnn.Embedding
                 # sess.run(t_assign_embedding)
-                old_emb_matrix_fasttext = sess.run(text_cnn.Embedding_fasttext.read_value())
-                fasttext_model_path = os.path.join(FLAGS.fasttext_word_vector_dir, column_name + "_fasttext.txt")
-                new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_fasttext, fasttext_model_path, FLAGS.embed_size, self.index_to_word)
+                # old_emb_matrix_fasttext = sess.run(text_cnn.Embedding_fasttext.read_value())
+                # fasttext_model_path = os.path.join(FLAGS.fasttext_word_vector_dir, column_name + "_fasttext.txt")
+                old_emb_matrix_word2vec = sess.run(text_cnn.Embedding_fasttext.read_value())
+                new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_word2vec, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
                 word_embedding_fasttext = tf.constant(new_emb_matrix_fasttext, dtype=tf.float32)  # 转为tensor
                 t_assign_embedding = tf.assign(text_cnn.Embedding_fasttext, word_embedding_fasttext)  # 将word_embedding复制给text_cnn.Embedding
                 sess.run(t_assign_embedding)
