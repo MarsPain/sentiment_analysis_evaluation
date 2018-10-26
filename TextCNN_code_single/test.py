@@ -51,3 +51,13 @@ import pandas as pd
 #     for j in range(1, 10):
 #         l.append(i + round(0.1 * j, 2))
 # print(l)
+
+# from sklearn.feature_extraction.text import TfidfVectorizer
+# s = ["我知道 这个 真的 很 好 吃", "这个一点都不 好 吃"]
+# vectorizer_tfidf = TfidfVectorizer(analyzer="word", token_pattern=u"(?u)\\b\\w+\\b")
+# vectorizer_tfidf.fit(s)
+# train_vector_tfidf = vectorizer_tfidf.transform(s)
+# word_dict = vectorizer_tfidf.vocabulary_
+# print(word_dict)
+# print(train_vector_tfidf[0].toarray())
+

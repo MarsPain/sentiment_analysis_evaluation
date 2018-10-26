@@ -5,7 +5,7 @@ import os
 # ckpt
 column_index = 2
 num_classes = 4
-num_epochs = 50
+num_epochs = 40
 batch_size = 32
 vocab_size = 210000
 tokenize_style = "word"

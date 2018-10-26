@@ -21,7 +21,7 @@ def get_tfidf_dict_and_save(data, tfidf_path, tokenize_style):
     :return:
     """
     if tokenize_style == "word":
-        vectorizer_tfidf = TfidfVectorizer()
+        vectorizer_tfidf = TfidfVectorizer(analyzer="word", token_pattern=u"(?u)\\b\\w+\\b")
     else:
         vectorizer_tfidf = TfidfVectorizer(analyzer="char")
     vectorizer_tfidf.fit(data)
@@ -59,7 +59,7 @@ def get_idf_dict_and_save(data, idf_path, tokenize_style):
     :return:
     """
     if tokenize_style == "word":
-        vectorizer_tfidf = TfidfVectorizer()
+        vectorizer_tfidf = TfidfVectorizer(analyzer="word", token_pattern=u"(?u)\\b\\w+\\b")
     else:
         vectorizer_tfidf = TfidfVectorizer(analyzer="char")
     vectorizer_tfidf.fit_transform(data)
