@@ -8,7 +8,7 @@ import os
 import tensorflow as tf
 import math
 import random
-from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf
+from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf, get_vector_tfidf_from_dict
 from TextCNN_code_single.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding
 from TextCNN_code_single.model import TextCNN
@@ -24,9 +24,10 @@ test_data_path = "../data/sentiment_analysis_validationset.csv"
 # test_data_path = "result.csv"
 test_data_pkl = "pkl/test_data.pkl"
 test_data_predict_out_path = "result.csv"
-models_dir = "ckpt_3"
-word_label_dict = "pkl/word_label_dict_3.pkl"
+models_dir = "ckpt_4"
+word_label_dict = "pkl/word_label_dict.pkl"
 tfidf_path = "data/tfidf.txt"
+idf_path = "data/idf_4_traffic.txt"
 log_predict_error_dir = "error_log"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] <%(processName)s> (%(threadName)s) %(message)s')
@@ -51,11 +52,22 @@ def get_data():
         logger.info("complete seg test data")
         with open(word_label_dict, 'rb') as dict_f:
             word_to_index, index_to_word, label_to_index, index_to_label = pickle.load(dict_f)
-        tfidf_dict = load_tfidf_dict(tfidf_path)
-        test_vector_tfidf = get_vector_tfidf(string_test, tfidf_dict)
+        # tfidf_dict = load_tfidf_dict(tfidf_path)
+        # test_vector_tfidf = get_vector_tfidf(string_test, tfidf_dict)
+        idf_dict = load_tfidf_dict(idf_path)
+        test_vector_tfidf = get_vector_tfidf_from_dict(string_test, idf_dict)
         sentences_test = sentence_word_to_index(string_test, word_to_index)
         sentences_padding = padding_data(sentences_test, config.max_len)
         vector_tfidf_padding = padding_data(test_vector_tfidf, config.max_len)
+        # idf_attention_padding = []
+        # for i in range(len(vector_tfidf_padding)):
+        #     vector_tfidf = vector_tfidf_padding[i]
+        #     vector_tfidf = np.asarray(vector_tfidf)
+        #     # print("vector_tfidf", vector_tfidf)
+        #     idf_attention = np.reshape(vector_tfidf, [-1, 1])
+        #     idf_attention = idf_attention.tolist()
+        #     # print("idf_attention", idf_attention)
+        #     idf_attention_padding.append(idf_attention)
         test_data = [sentences_padding, vector_tfidf_padding]
         with open(test_data_pkl, "wb") as f:
             pickle.dump([test_data], f)

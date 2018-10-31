@@ -67,6 +67,8 @@ def get_idf_dict_and_save(data, idf_path, tokenize_style):
     word_to_idf = dict(zip(vectorizer_tfidf.get_feature_names(), idf))
     with open(idf_path, "w", encoding="utf-8") as f:
         for word, tfidf_score in word_to_idf.items():
+            tfidf_score = 1 / tfidf_score
+            tfidf_score *= 10
             f.write(word+"|||"+str(tfidf_score)+"\n")
 
 

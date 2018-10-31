@@ -19,9 +19,9 @@ stopwords_path = "data/stop_words_2.txt"
 def seg_words(contents, tokenize_style):
     string_segs = []
     if tokenize_style == "word":
-        stopwords = stopwordslist(stopwords_path)
-        stopwords_set = set(stopwords)
-        # stopwords_set = set()
+        # stopwords = stopwordslist(stopwords_path)
+        # stopwords_set = set(stopwords)
+        stopwords_set = set()
         for content in contents:
             content = re.sub(" ", "，", content.strip())
             # print(content)
@@ -226,6 +226,15 @@ def shuffle_padding(sentences, feature_vector, label_dict, max_len):
     sentences_padding = pad_sequences(sentences_shuffle, max_len, PAD_ID)
     # print(sentences_padding[0])
     vector_tfidf_padding = pad_sequences(vector_tfidf_shuffle, max_len, PAD_ID)
+    # idf_attention_padding = []
+    # for i in range(len(vector_tfidf_padding)):
+    #     vector_tfidf = vector_tfidf_padding[i]
+    #     vector_tfidf = np.asarray(vector_tfidf)
+    #     # print("vector_tfidf", vector_tfidf)
+    #     idf_attention = np.reshape(vector_tfidf, [-1, 1])
+    #     idf_attention = idf_attention.tolist()
+    #     # print("idf_attention", idf_attention)
+    #     idf_attention_padding.append(idf_attention)
     # print(vector_tfidf_padding[0])
     data = [sentences_padding, vector_tfidf_padding, label_dict_shuffle]
     return data

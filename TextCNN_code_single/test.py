@@ -61,3 +61,22 @@ import pandas as pd
 # print(word_dict)
 # print(train_vector_tfidf[0].toarray())
 
+# import tensorflow as tf
+# import numpy as np
+# a = np.asarray([[1, 1, 1], [1, 1, 1]])
+# b = np.asarray([[1, 1, 1], [2, 2, 2]])
+# c = a * b
+# print(c)
+# a = tf.constant([[[1, 1, 1], [2, 2, 2]]])
+# b = tf.constant([[[1], [2]]])
+# with tf.Session() as sess:
+#     b_new = tf.tile(b, [1, 1, 3])
+#     # print(b_new)
+#     b_new_array = b_new.eval(session=sess)
+#     print(b_new_array)
+#     c = a * b_new
+#     print(c, c.eval(session=sess))
+# a = np.asarray([1, 2])
+# a = np.reshape(a, [-1, 1])
+# print(a)
+# print(a.tolist())

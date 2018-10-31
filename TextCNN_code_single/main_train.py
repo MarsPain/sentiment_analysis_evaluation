@@ -21,11 +21,11 @@ from TextCNN_code_single.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_6", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_4", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
-# tf.app.flags.DEFINE_string("tfidf_dict_path", "./data/tfidf.txt", "file for tfidf value dict")
-tf.app.flags.DEFINE_string("idf_dict_path", "./data/idf.txt", "file for tfidf value dict")
+tf.app.flags.DEFINE_string("tfidf_dict_path", "./data/tfidf.txt", "file for tfidf value dict")
+tf.app.flags.DEFINE_string("idf_dict_path", "./data/idf_4_traffic.txt", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("tfidf_path", "./pkl/tfidf.pkl", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_trainingset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
@@ -97,7 +97,7 @@ class Main:
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
-        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid_5.pkl")
+        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid.pkl")
         if os.path.exists(string_train_valid):  # 若word_label_path已存在
             with open(string_train_valid, 'rb') as f:
                 self.string_train, self.string_valid = pickle.load(f)
@@ -137,25 +137,25 @@ class Main:
 
     def get_data(self):
         logger.info("start get data")
-        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_5.pkl")
+        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_4.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
                 train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
             # # 获取tfidf值并存储为tfidf字典
-            # if not os.path.exists(FLAGS.tfidf_path):
-            #     get_tfidf_dict_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
-            # tfidf_dict = load_tfidf_dict(FLAGS.tfidf_path)
-            # # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
-            # train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, tfidf_dict)
-            # valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, tfidf_dict)
+            if not os.path.exists(FLAGS.tfidf_dict_path):
+                get_tfidf_dict_and_save(self.string_train, FLAGS.tfidf_dict_path, config.tokenize_style)
+            tfidf_dict = load_tfidf_dict(FLAGS.tfidf_dict_path)
+            # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
+            train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, tfidf_dict)
+            valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, tfidf_dict)
             # 获取idf值并存储为idf字典
-            if not os.path.exists(FLAGS.idf_dict_path):
-                get_idf_dict_and_save(self.string_train, FLAGS.idf_dict_path, config.tokenize_style)
-            idf_dict = load_tfidf_dict(FLAGS.idf_dict_path)
-            # 根据idf_dict获取训练集和验证集的idf值向量作为额外的特征向量
-            train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, idf_dict)
-            valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, idf_dict)
+            # if not os.path.exists(FLAGS.idf_dict_path):
+            #     get_idf_dict_and_save(self.string_train, FLAGS.idf_dict_path, config.tokenize_style)
+            # idf_dict = load_tfidf_dict(FLAGS.idf_dict_path)
+            # # 根据idf_dict获取训练集和验证集的idf值向量作为额外的特征向量
+            # train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, idf_dict)
+            # valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, idf_dict)
             # # 获取tfidf模型以及已被排序的字典
             # if not os.path.exists(FLAGS.tfidf_path):
             #     vectorizer_tfidf, word_list_sort_dict = get_tfidf_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
@@ -210,10 +210,10 @@ class Main:
         best_acc = 0.50
         best_f1_score = 0.20
         batch_num = self.train_batch_manager.len_data
-        sample_weights_list = []
-        for batch in self.train_batch_manager.iter_batch(shuffle=False):
-            input_x, _, _ = batch
-            sample_weights_list.append([1 for i in range(len(input_x))])
+        # sample_weights_list = []
+        # for batch in self.train_batch_manager.iter_batch(shuffle=False):
+        #     input_x, _, _ = batch
+        #     sample_weights_list.append([1 for i in range(len(input_x))])
         for epoch in range(curr_epoch, FLAGS.num_epochs):
             loss, eval_acc, counter = 0.0, 0.0, 0
             sample_weights_list_new = []
@@ -227,7 +227,7 @@ class Main:
                 input_y_all.extend(input_y)
                 # print("input_y:", input_y)
                 index = iteration % batch_num - 1 if iteration % batch_num != 0 else batch_num - 1
-                sample_weights_mini_list = sample_weights_list[index]
+                # sample_weights_mini_list = sample_weights_list[index]
                 # weights = get_weights_for_current_batch_and_sample(input_y, self.label_weight_dict[column_name], sample_weights_mini_list)   # 根据类别权重参数更新训练集各标签的权重
                 weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
                 feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
@@ -283,18 +283,17 @@ class Main:
                 os.makedirs(model_save_dir)
             if FLAGS.use_pretrained_embedding:  # 加载预训练的词向量
                 print("===>>>going to use pretrained word embeddings...")
-                # old_emb_matrix_word2vec = sess.run(text_cnn.Embedding_word2vec.read_value())
-                # new_emb_matrix_word2vec = load_word_embedding(old_emb_matrix_word2vec, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
-                # word_embedding_word2vec = tf.constant(new_emb_matrix_word2vec, dtype=tf.float32)  # 转为tensor
-                # t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding_word2vec)  # 将word_embedding复制给text_cnn.Embedding
-                # sess.run(t_assign_embedding)
+                old_emb_matrix_word2vec = sess.run(text_cnn.Embedding_word2vec.read_value())
+                new_emb_matrix_word2vec = load_word_embedding(old_emb_matrix_word2vec, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
+                word_embedding_word2vec = tf.constant(new_emb_matrix_word2vec, dtype=tf.float32)  # 转为tensor
+                t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding_word2vec)  # 将word_embedding复制给text_cnn.Embedding
+                sess.run(t_assign_embedding)
                 # old_emb_matrix_fasttext = sess.run(text_cnn.Embedding_fasttext.read_value())
                 # fasttext_model_path = os.path.join(FLAGS.fasttext_word_vector_dir, column_name + "_fasttext.txt")
-                old_emb_matrix_word2vec = sess.run(text_cnn.Embedding_fasttext.read_value())
-                new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_word2vec, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
-                word_embedding_fasttext = tf.constant(new_emb_matrix_fasttext, dtype=tf.float32)  # 转为tensor
-                t_assign_embedding = tf.assign(text_cnn.Embedding_fasttext, word_embedding_fasttext)  # 将word_embedding复制给text_cnn.Embedding
-                sess.run(t_assign_embedding)
+                # new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_fasttext, fasttext_model_path, FLAGS.embed_size, self.index_to_word)
+                # word_embedding_fasttext = tf.constant(new_emb_matrix_fasttext, dtype=tf.float32)  # 转为tensor
+                # t_assign_embedding = tf.assign(text_cnn.Embedding_fasttext, word_embedding_fasttext)  # 将word_embedding复制给text_cnn.Embedding
+                # sess.run(t_assign_embedding)
                 print("using pre-trained word emebedding.ended...")
         return text_cnn, saver
 
