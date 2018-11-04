@@ -80,3 +80,12 @@ import pandas as pd
 # a = np.reshape(a, [-1, 1])
 # print(a)
 # print(a.tolist())
+
+# 测试嵌套数组的两种排序方法
+# l = [[1, 2], [5, 3], [3, 4]]
+# l_2 = sorted(l, key=lambda x: x[0], reverse=True)
+# print(l_2)
+
+# l = [[1, 2], [5, 3], [3, 4]]
+# l.sort(key=lambda x: x[0], reverse=True)
+# print(l)

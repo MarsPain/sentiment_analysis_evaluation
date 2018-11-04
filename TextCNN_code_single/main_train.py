@@ -142,7 +142,7 @@ class Main:
             with open(train_valid_test, 'rb') as data_f:
                 train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
-            # # 获取tfidf值并存储为tfidf字典
+            # 获取tfidf值并存储为tfidf字典
             if not os.path.exists(FLAGS.tfidf_dict_path):
                 get_tfidf_dict_and_save(self.string_train, FLAGS.tfidf_dict_path, config.tokenize_style)
             tfidf_dict = load_tfidf_dict(FLAGS.tfidf_dict_path)
@@ -156,7 +156,7 @@ class Main:
             # # 根据idf_dict获取训练集和验证集的idf值向量作为额外的特征向量
             # train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, idf_dict)
             # valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, idf_dict)
-            # # 获取tfidf模型以及已被排序的字典
+            # 获取tfidf模型以及已被排序的字典
             # if not os.path.exists(FLAGS.tfidf_path):
             #     vectorizer_tfidf, word_list_sort_dict = get_tfidf_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
             # else:

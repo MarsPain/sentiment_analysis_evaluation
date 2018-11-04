@@ -119,7 +119,7 @@ def get_vector_tfidf(string_list, vectorizer_tfidf, word_dict):
             if word in word_dict:
                 string_vector_tfidf.append(vector_tfidf[word_dict[word]])
             else:
-                string_vector_tfidf.append(1)
+                string_vector_tfidf.append(0.1)
         string_vector_tfidf_list.append(string_vector_tfidf)
     return string_vector_tfidf_list
 

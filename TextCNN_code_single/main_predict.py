@@ -10,7 +10,7 @@ import math
 import random
 from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf, get_vector_tfidf_from_dict
 from TextCNN_code_single.utils import load_data_from_csv, load_tfidf_dict,\
-    load_word_embedding
+    load_word_embedding, get_tfidf_and_save
 from TextCNN_code_single.model import TextCNN
 from TextCNN_code_single.confidence_adjust import adjust_confidence, automatic_search
 
@@ -27,6 +27,7 @@ test_data_predict_out_path = "result.csv"
 models_dir = "ckpt_4"
 word_label_dict = "pkl/word_label_dict.pkl"
 tfidf_path = "data/tfidf.txt"
+tfidf_pkl_path = "data/tfidf.pkl"
 idf_path = "data/idf_4_traffic.txt"
 log_predict_error_dir = "error_log"
 
@@ -52,10 +53,18 @@ def get_data():
         logger.info("complete seg test data")
         with open(word_label_dict, 'rb') as dict_f:
             word_to_index, index_to_word, label_to_index, index_to_label = pickle.load(dict_f)
-        # tfidf_dict = load_tfidf_dict(tfidf_path)
-        # test_vector_tfidf = get_vector_tfidf(string_test, tfidf_dict)
-        idf_dict = load_tfidf_dict(idf_path)
-        test_vector_tfidf = get_vector_tfidf_from_dict(string_test, idf_dict)
+        tfidf_dict = load_tfidf_dict(tfidf_path)
+        test_vector_tfidf = get_vector_tfidf_from_dict(string_test, tfidf_dict)
+        # idf_dict = load_tfidf_dict(idf_path)
+        # test_vector_tfidf = get_vector_tfidf_from_dict(string_test, idf_dict)
+        # # 获取tfidf模型以及已被排序的字典
+        # if not os.path.exists(tfidf_pkl_path):
+        #     vectorizer_tfidf, word_list_sort_dict = get_tfidf_and_save(string_test, tfidf_pkl_path, config.tokenize_style)
+        # else:
+        #     with open(tfidf_pkl_path, "rb") as f:
+        #         vectorizer_tfidf, word_list_sort_dict = pickle.load(f)
+        # # 根据tfidf模型以及已被排序的字典获取训练集和验证集的tfidf值向量作为额外的特征向量
+        # test_vector_tfidf = get_vector_tfidf(string_test, vectorizer_tfidf, word_list_sort_dict)
         sentences_test = sentence_word_to_index(string_test, word_to_index)
         sentences_padding = padding_data(sentences_test, config.max_len)
         vector_tfidf_padding = padding_data(test_vector_tfidf, config.max_len)

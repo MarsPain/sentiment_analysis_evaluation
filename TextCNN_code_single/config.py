@@ -3,10 +3,10 @@
 
 import os
 # ckpt
-column_index = 4
+column_index = 8
 num_classes = 4
 num_epochs = 30
-batch_size = 16
+batch_size = 32
 vocab_size = 210000
 tokenize_style = "word"
 embed_size = 100
