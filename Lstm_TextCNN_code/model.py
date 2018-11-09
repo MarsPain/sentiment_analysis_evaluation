@@ -41,8 +41,8 @@ class Bilstm:
         self.epoch_increment = tf.assign(self.epoch_step, tf.add(self.epoch_step, tf.constant(1)))
 
         # 构造图
-        embed = self.embedding_layer()
-        self.lstm_outputs = self.bilstm_layer(embed)
+        # embed = self.embedding_layer()
+        # self.lstm_outputs = self.bilstm_layer(embed)
         self.logits = self.inference_cnn()
         self.loss_val = self.loss_layer()
         self.train_op = self.train()    # 更新参数
@@ -70,48 +70,54 @@ class Bilstm:
                 dtype=tf.float32,
                 time_major=False)
         # tf.transpose用于交换矩阵的维度，tf.unstack用于对矩阵进行分解，从而可以选取最后一个时间步的输出
-        hidden = tf.reshape(outputs, [-1, self.sequence_length, config.lstm_dim])
-        return hidden
+        # hidden = tf.reshape(outputs, [-1, self.sequence_length, config.lstm_dim])
+        outputs_all = tf.unstack(tf.transpose(outputs, [1, 0, 2]))
+        output_final = outputs_all[-1]
+        return output_final
 
     def inference_cnn(self):
         # cnn features from sentences_1 and sentences_2
-        x = self.conv_layers(1)  # [None,num_filters_total]
-        h_cnn = self.additive_attention(x, self.hidden_size / 2, "cnn_attention")
-        h = h_cnn
+        x = self.conv_layers(self.input_x, 1, self.Embedding_fasttext)  # [None,num_filters_total]
+        # h_cnn = self.additive_attention(x, self.hidden_size / 2, "cnn_attention")
+        h_lstm = self.bilstm_layer(x)
+        h = h_lstm
         h = tf.layers.dense(h, self.hidden_size, activation=tf.nn.relu, use_bias=True)  # fully connected layer
         h = tf.nn.dropout(h, keep_prob=self.dropout_keep_prob)
         with tf.name_scope("output"):
             logits = tf.layers.dense(h, self.num_classes, use_bias=False)
         return logits
 
-    def conv_layers(self, name_scope, reuse_flag=False):
-        lstm_outputs_expanded = tf.expand_dims(self.lstm_outputs, -1)
-        # print("lstm_outputs_expanded:", lstm_outputs_expanded)
+    def conv_layers(self, input_x, name_scope, embedding, reuse_flag=False):
+        embedded_words = tf.nn.embedding_lookup(embedding, input_x)    # [None,sentence_length,embed_size]
+        # idf_attention_matrix = tf.tile(self.idf_attention, [1, 1, 100])
+        # embedded_words = embedded_words * idf_attention_matrix
+        # [None,sentence_length,embed_size,1] expand dimension so meet input requirement of 2d-conv
+        sentence_embeddings_expanded = tf.expand_dims(embedded_words, -1)   # 词向量可以是多通道的
         pooled_outputs = []
         for i, filter_size in enumerate(self.filter_sizes):
             with tf.variable_scope(str(name_scope)+"convolution-pooling-%s" % filter_size, reuse=reuse_flag):
                 # 1.create filter
-                filters = tf.get_variable("filter-%s" % filter_size, [filter_size, self.lstm_dim, 1, self.num_filters], initializer=self.initializer)
+                filters = tf.get_variable("filter-%s" % filter_size, [filter_size, self.embed_size, 1, self.num_filters], initializer=self.initializer)
                 # 2.conv operation: conv2d===>computes a 2-D convolution given 4-D `input` and `filter` tensors.
-                conv = tf.nn.conv2d(lstm_outputs_expanded, filters, strides=[1, 1, 1, 1],
+                conv = tf.nn.conv2d(sentence_embeddings_expanded, filters, strides=[1, 1, 1, 1],
                                     padding="VALID", name="conv")   # shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]
                 # print("conv:", conv)
                 # 3. apply nolinearity
                 b = tf.get_variable("b-%s" % filter_size, [self.num_filters])
                 h = tf.nn.relu(tf.nn.bias_add(conv, b), "relu")  # [batch_size,sequence_length - filter_size + 1,1,num_filters]
                 h = tf.reshape(h, [-1, self.sequence_length - filter_size + 1, self.num_filters])  # [batch_size,sequence_length - filter_size + 1,num_filters]
-                h = tf.transpose(h, [0, 2, 1])  # [batch_size,num_filters,sequence_length - filter_size + 1]
+                # h = tf.transpose(h, [0, 2, 1])  # [batch_size,num_filters,sequence_length - filter_size + 1]
                 # 4. k-max pooling
-                h = tf.nn.top_k(h, k=self.top_k, name='top_k')[0]  # [batch_size,num_filters,self.k]
-                h = tf.reshape(h, [-1, self.num_filters*self.top_k])  # [batch_size,num_filters*self.k]
+                # h = tf.nn.top_k(h, k=self.top_k, name='top_k')[0]  # [batch_size,num_filters,self.k]
+                # h = tf.reshape(h, [-1, self.num_filters*self.top_k])  # [batch_size,num_filters*self.k]
                 pooled_outputs.append(h)
         # 5. combine all pooled features, and flatten the feature.output' shape is a [1,None]
-        h_pool = tf.concat(pooled_outputs, 1)  # shape:[batch_size, num_filters_total*self.k]
+        h_pool = tf.concat(pooled_outputs, 2)  # shape:[batch_size, num_filters_total*self.k]
         h_pool_flat = tf.reshape(h_pool, [-1, self.num_filters_total*self.top_k])  # shape should be:[None,num_filters_total]
         # print("h_pool_flat:", h_pool_flat)
         # 6. add dropout
         with tf.name_scope("dropout"):
-            h = tf.nn.dropout(h_pool_flat, keep_prob=self.dropout_keep_prob)    # [None,num_filters_total]
+            h = tf.nn.dropout(h_pool, keep_prob=self.dropout_keep_prob)    # [None,num_filters_total]
         return h
 
     def additive_attention(self, x, dimension_size, vairable_scope):

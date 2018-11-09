@@ -263,7 +263,7 @@ class Main:
                 print("===>>>going to use pretrained word embeddings...")
                 old_emb_matrix_fasttext = sess.run(text_cnn.Embedding_fasttext.read_value())
                 fasttext_model_path = os.path.join(FLAGS.fasttext_word_vector_dir, column_name + "_fasttext.txt")
-                new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_fasttext, fasttext_model_path, FLAGS.embed_size, self.index_to_word)
+                new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_fasttext, FLAGS.word2vec_model_path, FLAGS.embed_size, self.index_to_word)
                 word_embedding_fasttext = tf.constant(new_emb_matrix_fasttext, dtype=tf.float32)  # 转为tensor
                 t_assign_embedding = tf.assign(text_cnn.Embedding_fasttext, word_embedding_fasttext)  # 将word_embedding复制给text_cnn.Embedding
                 sess.run(t_assign_embedding)

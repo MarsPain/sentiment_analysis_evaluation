@@ -3,7 +3,7 @@
 
 import os
 # ckpt
-column_index = 8
+column_index = 2
 num_classes = 4
 num_epochs = 30
 batch_size = 32
