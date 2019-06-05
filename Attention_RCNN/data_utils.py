@@ -36,12 +36,18 @@ def seg_words(contents, tokenize_style):
             # print(" ".join(segs_new))
             string_segs.append(" ".join(segs_new))
     else:
+        stopwords = stopwordslist(stopwords_path)
+        stopwords_set = set(stopwords)
         for content in contents:
-            content = re.sub(" ", "，", content.strip())
-            # print(content)
-            content = re.sub("\n", "", content.strip())
-            # print(" ".join(list(content.strip())))
-            string_segs.append(" ".join(list(content.strip())))
+            content = re.sub("\\s", "", content.strip())
+            segs = list(content.strip())
+            segs_new = []
+            for word in segs:
+                if word not in stopwords_set:
+                    segs_new.append(word)
+                else:
+                    pass
+            string_segs.append(" ".join(segs_new))
     return string_segs
 
 
@@ -207,35 +213,19 @@ def sentence_word_to_index(string, word_to_index, label_train_dict, label_to_ind
     return sentences, label_train_dict_new
 
 
-def shuffle_padding(sentences, feature_vector, label_dict, max_len):
+def shuffle_padding(sentences, label_dict, max_len):
     sentences_shuffle = []
     label_dict_shuffle = {}
     for column, label_list in label_dict.items():
         label_dict_shuffle[column] = []
-    vector_tfidf_shuffle = []
     len_data = len(sentences)
     random_perm = np.random.permutation(len_data)   # 对索引进行随机排序
     for index in random_perm:
-        if len(sentences[index]) != len(feature_vector[index]):
-            print("Error!!!!!!", len(sentences[index]), len(feature_vector))
         sentences_shuffle.append(sentences[index])
-        vector_tfidf_shuffle.append(feature_vector[index])
         for column, label_list in label_dict.items():
             label_dict_shuffle[column].append(label_list[index])
     sentences_padding = pad_sequences(sentences_shuffle, max_len, PAD_ID)
-    # print(sentences_padding[0])
-    vector_tfidf_padding = pad_sequences(vector_tfidf_shuffle, max_len, PAD_ID)
-    # idf_attention_padding = []
-    # for i in range(len(vector_tfidf_padding)):
-    #     vector_tfidf = vector_tfidf_padding[i]
-    #     vector_tfidf = np.asarray(vector_tfidf)
-    #     # print("vector_tfidf", vector_tfidf)
-    #     idf_attention = np.reshape(vector_tfidf, [-1, 1])
-    #     idf_attention = idf_attention.tolist()
-    #     # print("idf_attention", idf_attention)
-    #     idf_attention_padding.append(idf_attention)
-    # print(vector_tfidf_padding[0])
-    data = [sentences_padding, vector_tfidf_padding, label_dict_shuffle]
+    data = [sentences_padding, label_dict_shuffle]
     return data
 
 
@@ -273,12 +263,11 @@ class BatchManager:
         batch_data = []
         for i in range(num_batch):
             sentences = data[0][i*batch_size:(i+1)*batch_size]
-            vector_tfidf = data[1][i*batch_size:(i+1)*batch_size]
-            label_dict = data[2]
+            label_dict = data[1]
             label_dict_mini_batch = {}
             for column, label_list in label_dict.items():
                 label_dict_mini_batch[column] = label_list[i*batch_size:(i+1)*batch_size]
-            batch_data.append([sentences, vector_tfidf, label_dict_mini_batch])
+            batch_data.append([sentences, label_dict_mini_batch])
         return batch_data
 
     def iter_batch(self, shuffle=False):

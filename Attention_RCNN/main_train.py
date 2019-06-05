@@ -15,7 +15,7 @@ from Attention_RCNN.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_4", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
 tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_dict_path", "./data/tfidf.txt", "file for tfidf value dict")
@@ -136,24 +136,16 @@ class Main:
             with open(train_valid_test, 'rb') as data_f:
                 train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
         else:   # 读取数据集并创建训练集、验证集
-            # 获取tfidf值并存储为tfidf字典
-            if not os.path.exists(FLAGS.tfidf_dict_path):
-                get_tfidf_dict_and_save(self.string_train, FLAGS.tfidf_dict_path, config.tokenize_style)
-            tfidf_dict = load_tfidf_dict(FLAGS.tfidf_dict_path)
-            # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
-            train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, tfidf_dict)
-            valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, tfidf_dict)
             # 语句序列化，将句子中的word和label映射成index，作为模型输入
             sentences_train, self.label_train_dict = sentence_word_to_index(self.string_train, self.word_to_index, self.label_train_dict, self.label_to_index)
             sentences_valid, self.label_valid_dict = sentence_word_to_index(self.string_valid, self.word_to_index, self.label_valid_dict, self.label_to_index)
             # print(sentences_train[0])
             # print(self.label_train_dict["location_traffic_convenience"])
             # 打乱数据、padding,并对评论序列、特征向量、标签字典打包
-            # max_sentence = get_max_len(sentences_train)  # 获取最大评论序列长度
-            train_data = shuffle_padding(sentences_train, train_vector_tfidf, self.label_train_dict, FLAGS.max_len)
-            valid_data = shuffle_padding(sentences_valid, valid_vector_tfidf, self.label_valid_dict, FLAGS.max_len)
+            train_data = shuffle_padding(sentences_train, self.label_train_dict, FLAGS.max_len)
+            valid_data = shuffle_padding(sentences_valid, self.label_valid_dict, FLAGS.max_len)
             # 从训练集中获取label_weight_dict（存储标签权重）
-            self.label_weight_dict = get_labal_weight(train_data[2], self.columns, config.num_classes)
+            self.label_weight_dict = get_labal_weight(train_data[1], self.columns, config.num_classes)
             with open(train_valid_test, "wb") as f:
                 pickle.dump([train_data, valid_data, self.label_weight_dict], f)
         print("训练集大小：", len(train_data[0]), "验证集大小：", len(valid_data[0]))
@@ -187,38 +179,26 @@ class Main:
         best_acc = 0.50
         best_f1_score = 0.20
         batch_num = self.train_batch_manager.len_data
-        # sample_weights_list = []
-        # for batch in self.train_batch_manager.iter_batch(shuffle=False):
-        #     input_x, _, _ = batch
-        #     sample_weights_list.append([1 for i in range(len(input_x))])
         for epoch in range(curr_epoch, FLAGS.num_epochs):
             loss, eval_acc, counter = 0.0, 0.0, 0
-            sample_weights_list_new = []
             input_y_all = []
             predictions_all = []
             # train
             for batch in self.train_batch_manager.iter_batch(shuffle=False):
                 iteration += 1
-                input_x, features_vector, input_y_dict = batch
+                input_x, input_y_dict = batch
                 input_y = input_y_dict[column_name]
                 input_y_all.extend(input_y)
-                # print("input_y:", input_y)
-                index = iteration % batch_num - 1 if iteration % batch_num != 0 else batch_num - 1
-                # sample_weights_mini_list = sample_weights_list[index]
-                # weights = get_weights_for_current_batch_and_sample(input_y, self.label_weight_dict[column_name], sample_weights_mini_list)   # 根据类别权重参数更新训练集各标签的权重
                 weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
-                feed_dict = {text_cnn.input_x: input_x, text_cnn.features_vector: features_vector, text_cnn.input_y: input_y,
+                feed_dict = {text_cnn.input_x: input_x, text_cnn.input_y: input_y,
                              text_cnn.weights: weights, text_cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
                              text_cnn.iter: iteration}
                 curr_loss, curr_acc, lr, _, predictions = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.learning_rate, text_cnn.train_op, text_cnn.predictions],
                                                                    feed_dict)
                 predictions_all.extend(predictions)
                 loss, eval_acc, counter = loss+curr_loss, eval_acc+curr_acc, counter+1
-                # sample_weights_mini_list_new = get_sample_weights(input_y, predictions, sample_weights_mini_list)
-                # sample_weights_list_new.append(sample_weights_mini_list_new)
                 if counter % 100 == 0:  # steps_check
                     print("Epoch %d\tBatch %d\tTrain Loss:%.3f\tAcc:%.3f\tLearning rate:%.5f" % (epoch, counter, loss/float(counter), eval_acc/float(counter), lr))
-            # sample_weights_list = sample_weights_list_new
             f_0, f_1, f_2, f_3 = get_f_scores_all(predictions_all, input_y_all, 0.00001)  # test_f_score_in_valid_data
             print("f_0, f_1, f_2, f_3:", f_0, f_1, f_2, f_3)
             print("f1_score:", (f_0 + f_1 + f_2 + f_3) / 4)
@@ -250,9 +230,8 @@ class Main:
             print("Restoring Variables from Checkpoint.")
             saver.restore(sess, tf.train.latest_checkpoint(model_save_dir))
             if False:
-                for i in range(1):  # decay learning rate if necessary.
-                    print(i, "Going to decay learning rate by half.")
-                    sess.run(text_cnn.learning_rate_decay_half_op)
+                print(i, "Going to decay learning rate by half.")
+                sess.run(text_cnn.learning_rate_decay_half_op)
         else:
             print('Initializing Variables')
             sess.run(tf.global_variables_initializer())

@@ -43,14 +43,14 @@ def get_word2vec(type):
     if type == "word":
         sentences = word2vec.LineSentence(path_word2vec_word_string)
         # model = word2vec.Word2Vec(sentences, sg=0, hs=1, min_count=1, window=4, size=100, iter=20)  # CBOW
-        model = word2vec.Word2Vec(sentences, sg=1, hs=1, min_count=1, window=4, size=100, iter=20)   # skipgram
+        model = word2vec.Word2Vec(sentences, sg=1, hs=1, min_count=1, window=4, size=300, iter=20)   # skipgram
         model.save("data/word2vec_word_model")
-        model.wv.save_word2vec_format('data/word2vec_word_model.txt', binary=False)
+        model.wv.save_word2vec_format('data/word2vec_word_model_sg.txt', binary=False)
     else:
         pass
         sentences = word2vec.LineSentence(path_word2vec_char_string)
         # model = word2vec.Word2Vec(sentences, sg=0, hs=1, min_count=1, window=4, size=100, iter=20)  # CBOW
-        model = word2vec.Word2Vec(sentences, sg=1, hs=1, min_count=1, window=4, size=100, iter=20)   # skipgram
+        model = word2vec.Word2Vec(sentences, sg=1, hs=1, min_count=1, window=4, size=300, iter=20)   # skipgram
         model.save("data/word2vec_char_model")
         model.wv.save_word2vec_format('data/word2vec_char_model_sg.txt', binary=False)
 
