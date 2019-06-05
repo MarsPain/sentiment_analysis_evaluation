@@ -9,7 +9,7 @@
       <excludeFolder url="file://$MODULE_DIR$/TextCNN_code_single/ckpt_2" />
       <excludeFolder url="file://$MODULE_DIR$/fasttext_code/data" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.5.4 (C:\Program Files\Anaconda3\envs\NER\python.exe)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.5 (ChineseNER)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
