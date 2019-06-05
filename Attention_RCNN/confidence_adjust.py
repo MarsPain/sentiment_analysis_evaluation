@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from TextCNN_code_single.utils import load_data_from_csv
+from Attention_RCNN.utils import load_data_from_csv
 
 
 def automatic_search(logits_all, column_name, label_to_index, valid_data_path):

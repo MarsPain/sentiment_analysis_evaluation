@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from tensorflow.contrib import rnn
-from TextCNN_code_single import config
+from Attention_RCNN import config
 
 
 class TextCNN:

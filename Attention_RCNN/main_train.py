@@ -1,17 +1,17 @@
 import tensorflow as tf
 import numpy as np
 import pickle
-from TextCNN_code_single import config
+from Attention_RCNN import config
 import logging
 import os
 import argparse
-from TextCNN_code_single.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
+from Attention_RCNN.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
     get_vector_tfidf, BatchManager, get_max_len, get_weights_for_current_batch, compute_confuse_matrix,\
     get_labal_weight, get_weights_for_current_batch_and_sample, get_sample_weights, get_f_scores_all,\
     get_vector_tfidf_from_dict
-from TextCNN_code_single.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
+from Attention_RCNN.utils import load_data_from_csv, get_tfidf_and_save, load_tfidf_dict,\
     load_word_embedding, get_tfidf_dict_and_save, get_idf_dict_and_save
-from TextCNN_code_single.model import TextCNN
+from Attention_RCNN.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数

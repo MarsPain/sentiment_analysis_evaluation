@@ -1,4 +1,4 @@
-from TextCNN_code_single import config
+from Attention_RCNN import config
 import logging
 from sklearn.externals import joblib
 import pickle
@@ -8,11 +8,11 @@ import os
 import tensorflow as tf
 import math
 import random
-from TextCNN_code_single.data_utils import seg_words, get_vector_tfidf, get_vector_tfidf_from_dict
-from TextCNN_code_single.utils import load_data_from_csv, load_tfidf_dict,\
+from Attention_RCNN.data_utils import seg_words, get_vector_tfidf, get_vector_tfidf_from_dict
+from Attention_RCNN.utils import load_data_from_csv, load_tfidf_dict,\
     load_word_embedding, get_tfidf_and_save
-from TextCNN_code_single.model import TextCNN
-from TextCNN_code_single.confidence_adjust import adjust_confidence, automatic_search
+from Attention_RCNN.model import TextCNN
+from Attention_RCNN.confidence_adjust import adjust_confidence, automatic_search
 
 PAD_ID = 0
 UNK_ID = 1

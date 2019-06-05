@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 import os
-from TextCNN_code_single.utils import load_data_from_csv
+from Attention_RCNN.utils import load_data_from_csv
 
 
 valid_data_path = "../data/sentiment_analysis_validationset.csv"

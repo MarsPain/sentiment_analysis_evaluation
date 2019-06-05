@@ -1,8 +1,8 @@
 import re
 import jieba
 from gensim.models import word2vec
-from TextCNN_code_single.data_utils import seg_words
-from TextCNN_code_single.utils import load_data_from_csv
+from Attention_RCNN.data_utils import seg_words
+from Attention_RCNN.utils import load_data_from_csv
 
 
 train_data_path = "../data/sentiment_analysis_trainingset.csv"
@@ -17,10 +17,10 @@ def get_word_data():
     content_train = train_data_df.iloc[:, 1]
     content_valid = validate_data_df.iloc[:, 1]
     string_train = seg_words(content_train, "word")
-    string_train = " ".join(string_train)
+    string_train = "\n".join(string_train)
     string_valid = seg_words(content_valid, "word")
-    string_valid = " ".join(string_valid)
-    string = string_train + " " + string_valid
+    string_valid = "\n".join(string_valid)
+    string = string_train + "\n" + string_valid
     with open(path_word2vec_word_string, "w", encoding="utf-8") as f:
         f.write(string)
 
@@ -31,10 +31,10 @@ def get_char_data():
     content_train = train_data_df.iloc[:, 1]
     content_valid = validate_data_df.iloc[:, 1]
     string_train = seg_words(content_train, "char")
-    string_train = " ".join(string_train)
+    string_train = "\n".join(string_train)
     string_valid = seg_words(content_valid, "char")
-    string_valid = " ".join(string_valid)
-    string = string_train + " " + string_valid
+    string_valid = "\n".join(string_valid)
+    string = string_train + "\n" + string_valid
     with open(path_word2vec_char_string, "w", encoding="utf-8") as f:
         f.write(string)
 
@@ -57,6 +57,6 @@ def get_word2vec(type):
 
 if __name__ == "__main__":
     # get_word_data()
-    # get_word2vec("word")
-    get_char_data()
-    get_word2vec("char")
+    get_word2vec("word")
+    # get_char_data()
+    # get_word2vec("char")
