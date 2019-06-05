@@ -1,14 +1,8 @@
 import tensorflow as tf
 import numpy as np
-# from model import TextCNN
-import os
-import csv
-import json
-from collections import OrderedDict
 import pickle
 from TextCNN_code_single import config
 import logging
-from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import argparse
 from TextCNN_code_single.data_utils import seg_words, create_dict, shuffle_padding, sentence_word_to_index,\
@@ -149,23 +143,6 @@ class Main:
             # 根据tfidf_dict获取训练集和验证集的tfidf值向量作为额外的特征向量
             train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, tfidf_dict)
             valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, tfidf_dict)
-            # 获取idf值并存储为idf字典
-            # if not os.path.exists(FLAGS.idf_dict_path):
-            #     get_idf_dict_and_save(self.string_train, FLAGS.idf_dict_path, config.tokenize_style)
-            # idf_dict = load_tfidf_dict(FLAGS.idf_dict_path)
-            # # 根据idf_dict获取训练集和验证集的idf值向量作为额外的特征向量
-            # train_vector_tfidf = get_vector_tfidf_from_dict(self.string_train, idf_dict)
-            # valid_vector_tfidf = get_vector_tfidf_from_dict(self.string_valid, idf_dict)
-            # 获取tfidf模型以及已被排序的字典
-            # if not os.path.exists(FLAGS.tfidf_path):
-            #     vectorizer_tfidf, word_list_sort_dict = get_tfidf_and_save(self.string_train, FLAGS.tfidf_path, config.tokenize_style)
-            # else:
-            #     with open(FLAGS.tfidf_path, "rb") as f:
-            #         vectorizer_tfidf, word_list_sort_dict = pickle.load(f)
-            # # 根据tfidf模型以及已被排序的字典获取训练集和验证集的tfidf值向量作为额外的特征向量
-            # train_vector_tfidf = get_vector_tfidf(self.string_train, vectorizer_tfidf, word_list_sort_dict)
-            # valid_vector_tfidf = get_vector_tfidf(self.string_valid, vectorizer_tfidf, word_list_sort_dict)
-            # print(train_vector_tfidf[0])
             # 语句序列化，将句子中的word和label映射成index，作为模型输入
             sentences_train, self.label_train_dict = sentence_word_to_index(self.string_train, self.word_to_index, self.label_train_dict, self.label_to_index)
             sentences_valid, self.label_valid_dict = sentence_word_to_index(self.string_valid, self.word_to_index, self.label_valid_dict, self.label_to_index)
@@ -288,12 +265,6 @@ class Main:
                 word_embedding_word2vec = tf.constant(new_emb_matrix_word2vec, dtype=tf.float32)  # 转为tensor
                 t_assign_embedding = tf.assign(text_cnn.Embedding_word2vec, word_embedding_word2vec)  # 将word_embedding复制给text_cnn.Embedding
                 sess.run(t_assign_embedding)
-                # old_emb_matrix_fasttext = sess.run(text_cnn.Embedding_fasttext.read_value())
-                # fasttext_model_path = os.path.join(FLAGS.fasttext_word_vector_dir, column_name + "_fasttext.txt")
-                # new_emb_matrix_fasttext = load_word_embedding(old_emb_matrix_fasttext, fasttext_model_path, FLAGS.embed_size, self.index_to_word)
-                # word_embedding_fasttext = tf.constant(new_emb_matrix_fasttext, dtype=tf.float32)  # 转为tensor
-                # t_assign_embedding = tf.assign(text_cnn.Embedding_fasttext, word_embedding_fasttext)  # 将word_embedding复制给text_cnn.Embedding
-                # sess.run(t_assign_embedding)
                 print("using pre-trained word emebedding.ended...")
         return text_cnn, saver
 
