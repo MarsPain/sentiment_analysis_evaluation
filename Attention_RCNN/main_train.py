@@ -187,6 +187,7 @@ class Main:
             for batch in self.train_batch_manager.iter_batch(shuffle=False):
                 iteration += 1
                 input_x, input_y_dict = batch
+                # print("input_x:", np.asarray(input_x).shape)
                 input_y = input_y_dict[column_name]
                 input_y_all.extend(input_y)
                 weights = get_weights_for_current_batch(input_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重

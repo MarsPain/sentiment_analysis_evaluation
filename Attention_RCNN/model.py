@@ -19,96 +19,97 @@ class TextCNN:
         self.filter_sizes = config.filter_sizes  # it is a list of int. e.g. [3,4,5]
         self.num_filters = config.num_filters
         self.initializer = tf.random_normal_initializer(stddev=0.1)
-        self.num_filters_total = self.num_filters * len(config.filter_sizes)  # 卷积核filter的数量
         self.clip_gradients = config.clip_gradients
         self.top_k = config.top_k
         # 设置占位符和变量
         self.Embedding_word2vec = tf.get_variable("Embedding_word2vec", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
-        self.Embedding_fasttext = tf.get_variable("Embedding_fasttext", shape=[self.vocab_size, self.embed_size], initializer=self.initializer)
         self.input_x = tf.placeholder(tf.int32, [None, self.sequence_length], name="input_x1")  # sentences
-        # print("input_x:", self.input_x)
-        self.features_vector = tf.placeholder(tf.float32, [None, self.sequence_length], name="features_vector")  # features_vector
-        self.idf_attention = tf.placeholder(tf.float32, [None, self.sequence_length, 1], name="idf_attention")  # features_vector
-        # print("features_vector:", self.features_vector)
         self.input_y = tf.placeholder(tf.int32, [None, ], name="input_y")  # labels:[None,num_classes]
-        # print("input_y:", self.input_y)
         self.weights = tf.placeholder(tf.float32, [None, ], name="weights_label")  # 标签权重
-        # print("weights:", self.weights)
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
         self.iter = tf.placeholder(tf.int32)  # 记录training iteration
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
         self.epoch_step = tf.Variable(0, trainable=False, name="Epoch_Step")
         self.epoch_increment = tf.assign(self.epoch_step, tf.add(self.epoch_step, tf.constant(1)))
+        used = tf.sign(tf.abs(self.input_x))  # 计算序列中索引非0字符的数量
+        length = tf.reduce_sum(used, reduction_indices=1)
+        self.lengths = tf.cast(length, tf.int32)  # 记录序列除去padding（索引为0）的真实长度
+        self.batch_size = tf.shape(self.input_x)[0]
+        self.num_steps = tf.shape(self.input_x)[-1]  # 序列总长度
 
         # 构造图
-        self.logits = self.inference_cnn()   # 获得预测值（one-hot向量：[batch_size, num_classes]）
-        self.loss_val = self.loss()  # 计算loss
-        self.train_op = self.train()    # 更新参数
-        self.predictions = tf.argmax(self.logits, 1, name="predictions")
+        feature = self.embed(self.input_x)
+        feature = self.bi_rnn_1(feature)
+        feature = self.bi_rnn_2(feature)
+        feature_att = self.attention(feature)
+        feature = self.pool_concat(feature, feature_att)
+        print("feature:", feature)
+        print("num_classes:", self.num_classes)
+        self.logits = tf.layers.dense(feature, self.num_classes, activation=tf.nn.softmax)
+        self.predictions = tf.argmax(self.logits, axis=1)
         correct_prediction = tf.equal(tf.cast(self.predictions, tf.int32), self.input_y)
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="Accuracy")
+        self.loss_val = self.loss()
+        self.train_op = self.train()
 
-    def inference_cnn(self):
-        h_bluescore = tf.layers.dense(self.features_vector, self.hidden_size / 2, use_bias=True)   # features_vector
-        h_bluescore = tf.nn.relu(h_bluescore)
-        # cnn features from sentences_1 and sentences_2
-        # x_1 = self.conv_layers(self.input_x, 1, self.Embedding_word2vec)  # [None,num_filters_total]
-        x_2 = self.conv_layers(self.input_x, 2, self.Embedding_word2vec)  # [None,num_filters_total]
-        # h_cnn_1 = self.additive_attention(x_1, self.hidden_size / 2, "cnn_attention_1")
-        h_cnn_2 = self.additive_attention(x_2, self.hidden_size / 2, "cnn_attention_2")
-        h = tf.concat([h_cnn_2, h_bluescore], axis=1)  # concat feature
-        # h = tf.concat([h_cnn_1, h_cnn_2], axis=1)
-        # h = h_cnn_2
-        h = tf.layers.dense(h, self.hidden_size, activation=tf.nn.relu, use_bias=True)  # fully connected layer
-        h = tf.nn.dropout(h, keep_prob=self.dropout_keep_prob)
-        with tf.name_scope("output"):
-            logits = tf.layers.dense(h, self.num_classes, use_bias=False)
-        return logits
+    def embed(self, inputs):
+        with tf.variable_scope("birnn_1"):
+            embedded_words = tf.nn.embedding_lookup(self.Embedding_word2vec, inputs)
+            embedded_words = tf.nn.dropout(embedded_words, keep_prob=self.dropout_keep_prob)
+        return embedded_words
 
-    def conv_layers(self, input_x, name_scope, embedding, reuse_flag=False):
-        embedded_words = tf.nn.embedding_lookup(embedding, input_x)    # [None,sentence_length,embed_size]
-        # idf_attention_matrix = tf.tile(self.idf_attention, [1, 1, 100])
-        # embedded_words = embedded_words * idf_attention_matrix
-        # [None,sentence_length,embed_size,1] expand dimension so meet input requirement of 2d-conv
-        sentence_embeddings_expanded = tf.expand_dims(embedded_words, -1)   # 词向量可以是多通道的
-        pooled_outputs = []
-        for i, filter_size in enumerate(self.filter_sizes):
-            with tf.variable_scope(str(name_scope)+"convolution-pooling-%s" % filter_size, reuse=reuse_flag):
-                # 1.create filter
-                filters = tf.get_variable("filter-%s" % filter_size, [filter_size, self.embed_size, 1, self.num_filters], initializer=self.initializer)
-                # 2.conv operation: conv2d===>computes a 2-D convolution given 4-D `input` and `filter` tensors.
-                conv = tf.nn.conv2d(sentence_embeddings_expanded, filters, strides=[1, 1, 1, 1],
-                                    padding="VALID", name="conv")   # shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]
-                # print("conv:", conv)
-                # 3. apply nolinearity
-                b = tf.get_variable("b-%s" % filter_size, [self.num_filters])
-                h = tf.nn.relu(tf.nn.bias_add(conv, b), "relu")  # [batch_size,sequence_length - filter_size + 1,1,num_filters]
-                h = tf.reshape(h, [-1, self.sequence_length - filter_size + 1, self.num_filters])  # [batch_size,sequence_length - filter_size + 1,num_filters]
-                h = tf.transpose(h, [0, 2, 1])  # [batch_size,num_filters,sequence_length - filter_size + 1]
-                # 4. k-max pooling
-                h = tf.nn.top_k(h, k=self.top_k, name='top_k')[0]  # [batch_size,num_filters,self.k]
-                h = tf.reshape(h, [-1, self.num_filters*self.top_k])  # [batch_size,num_filters*self.k]
-                pooled_outputs.append(h)
-        # 5. combine all pooled features, and flatten the feature.output' shape is a [1,None]
-        h_pool = tf.concat(pooled_outputs, 1)  # shape:[batch_size, num_filters_total*self.k]
-        h_pool_flat = tf.reshape(h_pool, [-1, self.num_filters_total*self.top_k])  # shape should be:[None,num_filters_total]
-        # print("h_pool_flat:", h_pool_flat)
-        # 6. add dropout
-        with tf.name_scope("dropout"):
-            h = tf.nn.dropout(h_pool_flat, keep_prob=self.dropout_keep_prob)    # [None,num_filters_total]
-        return h
+    def bi_rnn_1(self, inputs):
+        with tf.variable_scope("birnn_1"):
+            cell_for = tf.contrib.rnn.BasicLSTMCell(128, state_is_tuple=True)
+            cell_back = tf.contrib.rnn.BasicLSTMCell(128, state_is_tuple=True)
+            outputs, output_states = tf.nn.bidirectional_dynamic_rnn(cell_for,
+                                                                     cell_back,
+                                                                     inputs,
+                                                                     dtype=tf.float32,
+                                                                     sequence_length=self.lengths,   # 之前在该项目中使用RNN时，没有考虑padding字符
+                                                                     time_major=False)
+            outputs = tf.concat(outputs, axis=2)
+            outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
+        return outputs
 
-    def additive_attention(self, x, dimension_size, vairable_scope):
-        with tf.variable_scope(vairable_scope):
-            g = tf.get_variable("attention_g", initializer=tf.sqrt(1.0 / self.hidden_size))
-            b = tf.get_variable("bias", shape=[dimension_size], initializer=tf.zeros_initializer)
-            x = tf.layers.dense(x, dimension_size)  # [batch_size,hidden_size]
-            h = g*tf.nn.relu(x + b)  # [batch_size,hidden_size]
-        return h
+    def bi_rnn_2(self, inputs):
+        with tf.variable_scope("birnn_2"):
+            cell_for = tf.contrib.rnn.BasicLSTMCell(128, state_is_tuple=True)
+            cell_back = tf.contrib.rnn.BasicLSTMCell(128, state_is_tuple=True)
+            outputs, output_states = tf.nn.bidirectional_dynamic_rnn(cell_for,
+                                                                     cell_back,
+                                                                     inputs,
+                                                                     dtype=tf.float32,
+                                                                     sequence_length=self.lengths,
+                                                                     time_major=False)
+            outputs = tf.concat(outputs, axis=2)
+            outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
+        return outputs
+
+    def attention(self, inputs):
+        e = tf.layers.dense(tf.reshape(inputs, shape=[-1, 256]), 1, use_bias=False)
+        e = tf.nn.tanh(tf.reshape(e, shape=[-1, self.num_steps]))
+        a = tf.exp(e) / (tf.reduce_sum(e, axis=1, keep_dims=True) + 0.00001)
+        print("a:", a)
+        a = tf.expand_dims(a, 2)
+        outputs = a * inputs
+        # print("outputs:", outputs)
+        outputs = tf.reduce_sum(outputs, axis=1)
+        # print("outputs:", outputs)
+        return outputs
+
+    def pool_concat(self, inputs, inputs_att):
+        inputs = tf.expand_dims(inputs, axis=-1)
+        max_pool = tf.nn.max_pool(inputs, [1, 501, 1, 1], [1, 1, 1, 1], padding='VALID')
+        max_pool = tf.reshape(max_pool, shape=[-1, 256])
+        print("max_pool:", max_pool)
+        avg_pool = tf.nn.avg_pool(inputs, [1, 501, 1, 1], [1, 1, 1, 1], padding='VALID')
+        avg_pool = tf.reshape(avg_pool, shape=[-1, 256])
+        outputs = tf.concat([max_pool, avg_pool, inputs_att], axis=1)
+        return outputs
 
     def loss(self, l2_lambda=0.0003):
         with tf.name_scope("loss"):
-            # sparse_softmax_cross_entropy
             losses = tf.losses.sparse_softmax_cross_entropy(self.input_y, self.logits, weights=self.weights)
             loss_main = tf.reduce_mean(losses)
             l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * l2_lambda
