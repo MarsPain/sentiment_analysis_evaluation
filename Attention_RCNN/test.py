@@ -11,3 +11,12 @@ import numpy as np
 # n = np.array([1,2,3,4])
 # a, b, c, d = n
 # print(a, b, c, d)
+
+# n = [1, 2, 3, 4]
+# a, b, c, d = n
+# print(a, b, c, d)
+
+a = np.array([0, 0, 0, 0])
+for i in range(4):
+    a[i] = 54
+print(a)

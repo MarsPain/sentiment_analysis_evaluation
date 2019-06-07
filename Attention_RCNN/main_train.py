@@ -15,8 +15,8 @@ from Attention_RCNN.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_test", "checkpoint location for the model")
-tf.app.flags.DEFINE_string("pkl_dir", "pkl_test", "dir for save pkl file")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_dict_path", "./data/tfidf.txt", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("idf_dict_path", "./data/idf_4_traffic.txt", "file for tfidf value dict")
@@ -86,8 +86,8 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
-        content_train = self.train_data_df.iloc[:1000, 1]
-        content_valid = self.validate_data_df.iloc[:1000, 1]
+        content_train = self.train_data_df.iloc[:, 1]
+        content_valid = self.validate_data_df.iloc[:, 1]
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
@@ -107,11 +107,11 @@ class Main:
         logger.info("load label data")
         self.label_train_dict = {}
         for column in self.columns[2:]:
-            label_train = list(self.train_data_df[column].iloc[:1000])
+            label_train = list(self.train_data_df[column].iloc[:])
             self.label_train_dict[column] = label_train
         self.label_valid_dict = {}
         for column in self.columns[2:]:
-            label_valid = list(self.validate_data_df[column].iloc[:1000])
+            label_valid = list(self.validate_data_df[column].iloc[:])
             self.label_valid_dict[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
@@ -251,7 +251,7 @@ class Main:
     def evaluate(self, sess, text_cnn, batch_manager, iteration, column_name):
         small_value = 0.00001
         eval_loss, eval_accc, eval_counter = 0.0, 0.0, 0
-        f_array = np.array([0, 0, 0, 0])
+        all_samples_array = np.zeros((4, 3))
         for batch in batch_manager.iter_batch(shuffle=True):
             eval_x, eval_y_dict = batch
             eval_y = eval_y_dict[column_name]
@@ -260,15 +260,25 @@ class Main:
                          text_cnn.weights: weights, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
             curr_eval_loss, curr_accc, logits, predictions = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits, text_cnn.predictions], feed_dict)
             confuse_matrix = tf.confusion_matrix(predictions, eval_y).eval()
+            print(confuse_matrix)
             for i in range(4):
                 tp = confuse_matrix[i][i]
                 samples_r = np.sum(confuse_matrix, axis=0, keepdims=True)[0][i]
                 samples_p = np.sum(confuse_matrix, axis=1, keepdims=True)[i][0]
-                r = tp / (samples_r + small_value)
-                p = tp / (samples_p + small_value)
-                f = 2 * r * p / (r + p + small_value)
-                f_array[i] = f
+                all_samples_array[i][0] += tp
+                all_samples_array[i][1] += samples_r
+                all_samples_array[i][2] += samples_p
             eval_loss, eval_accc, eval_counter = eval_loss+curr_eval_loss, eval_accc+curr_accc, eval_counter+1
+        # f_array = np.array([0, 0, 0, 0])
+        f_list = []
+        for i in range(4):
+            r = all_samples_array[i][0] / (all_samples_array[i][1] + small_value)
+            p = all_samples_array[i][0] / (all_samples_array[i][2] + small_value)
+            f = 2 * r * p / (r + p + small_value)
+            # f_array[i] = f
+            # print(f, f_array)
+            f_list.append(f)
+        f_array = np.array(f_list)
         f_0, f_1, f_2, f_3 = f_array
         f1_score = np.mean(f_array, axis=0)
         return eval_loss/float(eval_counter), eval_accc/float(eval_counter), f1_score, f_0, f_1, f_2, f_3
