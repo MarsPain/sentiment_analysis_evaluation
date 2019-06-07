@@ -18,6 +18,7 @@ class TextCNN:
         self.learning_rate_decay_half_op = tf.assign(self.learning_rate, self.learning_rate * decay_rate_big)
         self.filter_sizes = config.filter_sizes  # it is a list of int. e.g. [3,4,5]
         self.num_filters = config.num_filters
+        self.rnn_dim = config.rnn_dim
         self.initializer = tf.random_normal_initializer(stddev=0.1)
         self.clip_gradients = config.clip_gradients
         self.top_k = config.top_k
@@ -41,6 +42,7 @@ class TextCNN:
         feature = self.embed(self.input_x)
         feature = self.bi_rnn_1(feature)
         feature = self.bi_rnn_2(feature)
+        feature = self.cnn(feature)
         feature_att = self.attention(feature)
         feature = self.pool_concat(feature, feature_att)
         print("feature:", feature)
@@ -60,8 +62,8 @@ class TextCNN:
 
     def bi_rnn_1(self, inputs):
         with tf.variable_scope("birnn_1"):
-            cell_for = tf.contrib.rnn.BasicLSTMCell(128, state_is_tuple=True)
-            cell_back = tf.contrib.rnn.BasicLSTMCell(128, state_is_tuple=True)
+            cell_for = tf.contrib.rnn.BasicLSTMCell(self.rnn_dim, state_is_tuple=True)
+            cell_back = tf.contrib.rnn.BasicLSTMCell(self.rnn_dim, state_is_tuple=True)
             outputs, output_states = tf.nn.bidirectional_dynamic_rnn(cell_for,
                                                                      cell_back,
                                                                      inputs,
@@ -74,8 +76,8 @@ class TextCNN:
 
     def bi_rnn_2(self, inputs):
         with tf.variable_scope("birnn_2"):
-            cell_for = tf.contrib.rnn.BasicLSTMCell(128, state_is_tuple=True)
-            cell_back = tf.contrib.rnn.BasicLSTMCell(128, state_is_tuple=True)
+            cell_for = tf.contrib.rnn.BasicLSTMCell(self.rnn_dim, state_is_tuple=True)
+            cell_back = tf.contrib.rnn.BasicLSTMCell(self.rnn_dim, state_is_tuple=True)
             outputs, output_states = tf.nn.bidirectional_dynamic_rnn(cell_for,
                                                                      cell_back,
                                                                      inputs,
@@ -86,25 +88,32 @@ class TextCNN:
             outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
         return outputs
 
+    def cnn(self, inputs):
+        with tf.variable_scope("cnn"):
+            inputs = tf.expand_dims(inputs, -1)
+            filters = tf.get_variable("filters", [self.filter_sizes, self.rnn_dim*2, 1, self.num_filters], initializer=self.initializer)
+            outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.rnn_dim*2, 1], padding="SAME", name="conv")
+            outputs = tf.reshape(outputs, [-1, self.sequence_length, self.num_filters])
+            outputs = tf.nn.relu(outputs)
+        return outputs
+
     def attention(self, inputs):
-        e = tf.layers.dense(tf.reshape(inputs, shape=[-1, 256]), 1, use_bias=False)
+        e = tf.layers.dense(tf.reshape(inputs, shape=[-1, self.num_filters]), 1, use_bias=False)
         e = tf.nn.tanh(tf.reshape(e, shape=[-1, self.num_steps]))
         a = tf.exp(e) / (tf.reduce_sum(e, axis=1, keep_dims=True) + 0.00001)
         print("a:", a)
         a = tf.expand_dims(a, 2)
         outputs = a * inputs
-        # print("outputs:", outputs)
         outputs = tf.reduce_sum(outputs, axis=1)
-        # print("outputs:", outputs)
         return outputs
 
     def pool_concat(self, inputs, inputs_att):
         inputs = tf.expand_dims(inputs, axis=-1)
-        max_pool = tf.nn.max_pool(inputs, [1, 501, 1, 1], [1, 1, 1, 1], padding='VALID')
-        max_pool = tf.reshape(max_pool, shape=[-1, 256])
+        max_pool = tf.nn.max_pool(inputs, [1, self.sequence_length, 1, 1], [1, 1, 1, 1], padding='VALID')
+        max_pool = tf.reshape(max_pool, shape=[-1, self.num_filters])
         print("max_pool:", max_pool)
-        avg_pool = tf.nn.avg_pool(inputs, [1, 501, 1, 1], [1, 1, 1, 1], padding='VALID')
-        avg_pool = tf.reshape(avg_pool, shape=[-1, 256])
+        avg_pool = tf.nn.avg_pool(inputs, [1, self.sequence_length, 1, 1], [1, 1, 1, 1], padding='VALID')
+        avg_pool = tf.reshape(avg_pool, shape=[-1, self.num_filters])
         outputs = tf.concat([max_pool, avg_pool, inputs_att], axis=1)
         return outputs
 

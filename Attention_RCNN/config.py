@@ -10,6 +10,7 @@ tokenize_style = "word"
 embed_size = 300
 filter_sizes = 3
 num_filters = 128
+rnn_dim = 128
 max_len = 501   # 必须是top_k的倍数
 top_k = 3
 learning_rate = 0.001

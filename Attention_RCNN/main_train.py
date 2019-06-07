@@ -260,7 +260,7 @@ class Main:
                          text_cnn.weights: weights, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
             curr_eval_loss, curr_accc, logits, predictions = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits, text_cnn.predictions], feed_dict)
             confuse_matrix = tf.confusion_matrix(predictions, eval_y).eval()
-            print(confuse_matrix)
+            # print(confuse_matrix)
             for i in range(4):
                 tp = confuse_matrix[i][i]
                 samples_r = np.sum(confuse_matrix, axis=0, keepdims=True)[0][i]
