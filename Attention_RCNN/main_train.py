@@ -15,8 +15,8 @@ from Attention_RCNN.model import TextCNN
 
 FLAGS = tf.app.flags.FLAGS
 # 文件路径参数
-tf.app.flags.DEFINE_string("ckpt_dir", "ckpt", "checkpoint location for the model")
-tf.app.flags.DEFINE_string("pkl_dir", "pkl", "dir for save pkl file")
+tf.app.flags.DEFINE_string("ckpt_dir", "ckpt_test", "checkpoint location for the model")
+tf.app.flags.DEFINE_string("pkl_dir", "pkl_test", "dir for save pkl file")
 tf.app.flags.DEFINE_string("config_file", "config", "dir for save pkl file")
 tf.app.flags.DEFINE_string("tfidf_dict_path", "./data/tfidf.txt", "file for tfidf value dict")
 tf.app.flags.DEFINE_string("idf_dict_path", "./data/idf_4_traffic.txt", "file for tfidf value dict")
@@ -86,8 +86,8 @@ class Main:
         logger.info("start load data")
         self.train_data_df = load_data_from_csv(FLAGS.train_data_path)
         self.validate_data_df = load_data_from_csv(FLAGS.dev_data_path)
-        content_train = self.train_data_df.iloc[:, 1]
-        content_valid = self.validate_data_df.iloc[:, 1]
+        content_train = self.train_data_df.iloc[:1000, 1]
+        content_valid = self.validate_data_df.iloc[:1000, 1]
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
@@ -107,11 +107,11 @@ class Main:
         logger.info("load label data")
         self.label_train_dict = {}
         for column in self.columns[2:]:
-            label_train = list(self.train_data_df[column].iloc[:])
+            label_train = list(self.train_data_df[column].iloc[:1000])
             self.label_train_dict[column] = label_train
         self.label_valid_dict = {}
         for column in self.columns[2:]:
-            label_valid = list(self.validate_data_df[column].iloc[:])
+            label_valid = list(self.validate_data_df[column].iloc[:1000])
             self.label_valid_dict[column] = label_valid
         # print(self.label_list["location_traffic_convenience"][0], type(self.label_list["location_traffic_convenience"][0]))
 
@@ -207,7 +207,7 @@ class Main:
             sess.run(text_cnn.epoch_increment)
             # valid
             if epoch % FLAGS.validate_every == 0:
-                eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3, weights_label = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
+                eval_loss, eval_accc, f1_scoree, f_0, f_1, f_2, f_3 = self.evaluate(sess, text_cnn, self.valid_batch_manager, iteration, column_name)
                 print("【Validation】Epoch %d\t f_0:%.3f\tf_1:%.3f\tf_2:%.3f\tf_3:%.3f" % (epoch, f_0, f_1, f_2, f_3))
                 print("【Validation】Epoch %d\t Loss:%.3f\tAcc %.3f\tF1 Score:%.3f" % (epoch, eval_loss, eval_accc, f1_scoree))
                 # save model to checkpoint
@@ -250,52 +250,28 @@ class Main:
 
     def evaluate(self, sess, text_cnn, batch_manager, iteration, column_name):
         small_value = 0.00001
-        # file_object = open('data/log_predict_error.txt', 'a')
         eval_loss, eval_accc, eval_counter = 0.0, 0.0, 0
-        true_positive_0_all, false_positive_0_all, false_negative_0_all, true_positive_1_all, false_positive_1_all, false_negative_1_all,\
-        true_positive_2_all, false_positive_2_all, false_negative_2_all, true_positive_3_all, false_positive_3_all, false_negative_3_all = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-        weights_label = {}  # weight_label[label_index]=(number,correct)
+        f_array = np.array([0, 0, 0, 0])
         for batch in batch_manager.iter_batch(shuffle=True):
-            eval_x, features_vector, eval_y_dict = batch
+            eval_x, eval_y_dict = batch
             eval_y = eval_y_dict[column_name]
             weights = get_weights_for_current_batch(eval_y, self.label_weight_dict[column_name])   # 根据类别权重参数更新训练集各标签的权重
-            feed_dict = {text_cnn.input_x: eval_x, text_cnn.features_vector: features_vector, text_cnn.input_y: eval_y,
+            feed_dict = {text_cnn.input_x: eval_x, text_cnn.input_y: eval_y,
                          text_cnn.weights: weights, text_cnn.dropout_keep_prob: 1.0, text_cnn.iter: iteration}
-            curr_eval_loss, curr_accc, logits = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits], feed_dict)
-            true_positive_0, false_positive_0, false_negative_0, true_positive_1, false_positive_1, false_negative_1,\
-            true_positive_2, false_positive_2, false_negative_2, true_positive_3, false_positive_3, false_negative_3 = compute_confuse_matrix(logits, eval_y, small_value)
-            true_positive_0_all += true_positive_0
-            false_positive_0_all += false_positive_0
-            false_negative_0_all += false_negative_0
-            true_positive_1_all += true_positive_1
-            false_positive_1_all += false_positive_1
-            false_negative_1_all += false_negative_1
-            true_positive_2_all += true_positive_2
-            false_positive_2_all += false_positive_2
-            false_negative_2_all += false_negative_2
-            true_positive_3_all += true_positive_3
-            false_positive_3_all += false_positive_3
-            false_negative_3_all += false_negative_3
-            # write_predict_error_to_file(file_object, logits, eval_y, self.index_to_word, eval_x1, eval_x2)    # 获取被错误分类的样本（后期再处理）
+            curr_eval_loss, curr_accc, logits, predictions = sess.run([text_cnn.loss_val, text_cnn.accuracy, text_cnn.logits, text_cnn.predictions], feed_dict)
+            confuse_matrix = tf.confusion_matrix(predictions, eval_y).eval()
+            for i in range(4):
+                tp = confuse_matrix[i][i]
+                samples_r = np.sum(confuse_matrix, axis=0, keepdims=True)[0][i]
+                samples_p = np.sum(confuse_matrix, axis=1, keepdims=True)[i][0]
+                r = tp / (samples_r + small_value)
+                p = tp / (samples_p + small_value)
+                f = 2 * r * p / (r + p + small_value)
+                f_array[i] = f
             eval_loss, eval_accc, eval_counter = eval_loss+curr_eval_loss, eval_accc+curr_accc, eval_counter+1
-        # print("标签0的预测情况：", true_positive_0, false_positive_0, false_negative_0)
-        p_0 = float(true_positive_0_all)/float(true_positive_0_all+false_positive_0_all+small_value)
-        r_0 = float(true_positive_0_all)/float(true_positive_0_all+false_negative_0_all+small_value)
-        f_0 = 2 * p_0 * r_0 / (p_0 + r_0 + small_value)
-        # print("标签1的预测情况：", true_positive_1, false_positive_1, false_negative_1)
-        p_1 = float(true_positive_1_all)/float(true_positive_1_all+false_positive_1_all+small_value)
-        r_1 = float(true_positive_1_all)/float(true_positive_1_all+false_negative_1_all+small_value)
-        f_1 = 2 * p_1 * r_1 / (p_1 + r_1 + small_value)
-        # print("标签2的预测情况：", true_positive_2, false_positive_2, false_negative_2)
-        p_2 = float(true_positive_2_all)/float(true_positive_2_all+false_positive_2_all+small_value)
-        r_2 = float(true_positive_2_all)/float(true_positive_2_all+false_negative_2_all+small_value)
-        f_2 = 2 * p_2 * r_2 / (p_2 + r_2 + small_value)
-        # print("标签3的预测情况：", true_positive_3, false_positive_3, false_negative_3)
-        p_3 = float(true_positive_3_all)/float(true_positive_3_all+false_positive_3_all+small_value)
-        r_3 = float(true_positive_3_all)/float(true_positive_3_all+false_negative_3_all+small_value)
-        f_3 = 2 * p_3 * r_3 / (p_3 + r_3 + small_value)
-        f1_score = (f_0 + f_1 + f_2 + f_3) / 4
-        return eval_loss/float(eval_counter), eval_accc/float(eval_counter), f1_score, f_0, f_1, f_2, f_3, weights_label
+        f_0, f_1, f_2, f_3 = f_array
+        f1_score = np.mean(f_array, axis=0)
+        return eval_loss/float(eval_counter), eval_accc/float(eval_counter), f1_score, f_0, f_1, f_2, f_3
 
 if __name__ == "__main__":
     main = Main()
