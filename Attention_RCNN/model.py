@@ -41,8 +41,9 @@ class TextCNN:
         # 构造图
         feature = self.embed(self.input_x)
         feature = self.bi_rnn_1(feature)
-        feature = self.bi_rnn_2(feature)
-        feature = self.cnn(feature)
+        # feature = self.bi_rnn_2(feature)
+        # feature = self.cnn(feature)
+        feature = self.cnn_resnet(feature)
         feature_att = self.attention(feature)
         feature = self.pool_concat(feature, feature_att)
         print("feature:", feature)
@@ -71,7 +72,7 @@ class TextCNN:
                                                                      sequence_length=self.lengths,   # 之前在该项目中使用RNN时，没有考虑padding字符
                                                                      time_major=False)
             outputs = tf.concat(outputs, axis=2)
-            outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
+            outputs = tf.nn.dropout(tf.nn.relu(outputs), keep_prob=self.dropout_keep_prob)
         return outputs
 
     def bi_rnn_2(self, inputs):
@@ -85,17 +86,39 @@ class TextCNN:
                                                                      sequence_length=self.lengths,
                                                                      time_major=False)
             outputs = tf.concat(outputs, axis=2)
-            outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
+            outputs = tf.nn.dropout(tf.nn.relu(outputs), keep_prob=self.dropout_keep_prob)
         return outputs
 
-    def cnn(self, inputs):
-        with tf.variable_scope("cnn"):
-            inputs = tf.expand_dims(inputs, -1)
-            filters = tf.get_variable("filters", [self.filter_sizes, self.rnn_dim*2, 1, self.num_filters], initializer=self.initializer)
+    def cnn_resnet(self, inputs_origin):
+        with tf.variable_scope("cnn_1"):
+            inputs = tf.expand_dims(inputs_origin, -1)
+            filters = tf.get_variable("filters", [self.filter_sizes, self.rnn_dim*2, 1, self.rnn_dim*2], initializer=self.initializer)
             outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.rnn_dim*2, 1], padding="SAME", name="conv")
-            outputs = tf.reshape(outputs, [-1, self.sequence_length, self.num_filters])
+            outputs = tf.reshape(outputs, [-1, self.sequence_length, self.rnn_dim*2])
             outputs = tf.nn.relu(outputs)
+        # inputs_origin = tf.add(tf.layers.dense(inputs_origin, self.num_filters, activation=tf.nn.relu),
+        #                        tf.layers.dense(outputs, self.num_filters, activation=tf.nn.relu))
+        inputs_origin = tf.nn.relu(tf.add(inputs_origin, outputs))
+        with tf.variable_scope("cnn_2"):
+            inputs = tf.expand_dims(inputs_origin, -1)
+            filters = tf.get_variable("filters", [self.filter_sizes, self.rnn_dim*2, 1, self.rnn_dim*2], initializer=self.initializer)
+            outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.rnn_dim*2, 1], padding="SAME", name="conv")
+            outputs = tf.reshape(outputs, [-1, self.sequence_length, self.rnn_dim*2])
+            outputs = tf.nn.relu(outputs)
+        outputs = tf.layers.dense(tf.add(inputs_origin, outputs), self.num_filters, activation=tf.nn.relu)
+        outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
         return outputs
+
+
+    # def cnn(self, inputs):
+    #     with tf.variable_scope("cnn"):
+    #         inputs = tf.expand_dims(inputs, -1)
+    #         filters = tf.get_variable("filters", [self.filter_sizes, self.rnn_dim*2, 1, self.num_filters], initializer=self.initializer)
+    #         outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.rnn_dim*2, 1], padding="SAME", name="conv")
+    #         outputs = tf.reshape(outputs, [-1, self.sequence_length, self.num_filters])
+    #         outputs = tf.nn.relu(outputs)
+    #     outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
+    #     return outputs
 
     def attention(self, inputs):
         e = tf.layers.dense(tf.reshape(inputs, shape=[-1, self.num_filters]), 1, use_bias=False)
