@@ -4,7 +4,7 @@
 column_index = 2
 num_classes = 4
 num_epochs = 30
-batch_size = 256
+batch_size = 384
 vocab_size = 30000
 tokenize_style = "word"
 embed_size = 300

@@ -35,6 +35,7 @@ class TextCNN:
         used = tf.sign(tf.abs(self.input_x))  # 计算序列中索引非0字符的数量
         length = tf.reduce_sum(used, reduction_indices=1)
         self.lengths = tf.cast(length, tf.int32)  # 记录序列除去padding（索引为0）的真实长度
+        self.sequence_mask = tf.cast(tf.greater(self.input_x, 0), 'float32')
         self.batch_size = tf.shape(self.input_x)[0]
         self.num_steps = tf.shape(self.input_x)[-1]  # 序列总长度
 
@@ -72,7 +73,10 @@ class TextCNN:
                                                                      sequence_length=self.lengths,   # 之前在该项目中使用RNN时，没有考虑padding字符
                                                                      time_major=False)
             outputs = tf.concat(outputs, axis=2)
-            outputs = tf.nn.dropout(tf.nn.relu(outputs), keep_prob=self.dropout_keep_prob)
+            mask = tf.expand_dims(self.sequence_mask, -1)
+            outputs -= (1 - mask) * 1e10
+            outputs = tf.nn.relu(outputs)
+            # outputs = tf.nn.dropout(tf.nn.relu(outputs), keep_prob=self.dropout_keep_prob)
         return outputs
 
     def bi_rnn_2(self, inputs):
@@ -96,17 +100,17 @@ class TextCNN:
             outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.rnn_dim*2, 1], padding="SAME", name="conv")
             outputs = tf.reshape(outputs, [-1, self.sequence_length, self.rnn_dim*2])
             outputs = tf.nn.relu(outputs)
-        # inputs_origin = tf.add(tf.layers.dense(inputs_origin, self.num_filters, activation=tf.nn.relu),
-        #                        tf.layers.dense(outputs, self.num_filters, activation=tf.nn.relu))
-        inputs_origin = tf.nn.relu(tf.add(inputs_origin, outputs))
+            outputs = tf.layers.batch_normalization(outputs)
         with tf.variable_scope("cnn_2"):
-            inputs = tf.expand_dims(inputs_origin, -1)
+            inputs = tf.expand_dims(outputs, -1)
             filters = tf.get_variable("filters", [self.filter_sizes, self.rnn_dim*2, 1, self.rnn_dim*2], initializer=self.initializer)
             outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.rnn_dim*2, 1], padding="SAME", name="conv")
             outputs = tf.reshape(outputs, [-1, self.sequence_length, self.rnn_dim*2])
-            outputs = tf.nn.relu(outputs)
-        outputs = tf.layers.dense(tf.add(inputs_origin, outputs), self.num_filters, activation=tf.nn.relu)
-        outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
+            # outputs = tf.nn.relu(outputs)
+            outputs = tf.layers.batch_normalization(outputs)
+        outputs = tf.nn.relu(tf.add(inputs_origin, outputs))
+        outputs = tf.layers.dense(outputs, self.num_filters, activation=tf.nn.relu)
+        # outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
         return outputs
 
 
