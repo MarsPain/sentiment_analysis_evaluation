@@ -40,13 +40,19 @@ class TextCNN:
         self.num_steps = tf.shape(self.input_x)[-1]  # 序列总长度
 
         # 构造图
-        feature = self.embed(self.input_x)
-        feature = self.bi_rnn_1(feature)
+        feature_emb = self.embed(self.input_x)
+        feature = self.bi_rnn_1(feature_emb)
         # feature = self.bi_rnn_2(feature)
         # feature = self.cnn(feature)
-        feature = self.cnn_resnet(feature)
         feature_att = self.attention(feature)
-        feature = self.pool_concat(feature, feature_att)
+
+        feature = self.cnn_resnet(feature_emb)
+        feature = tf.expand_dims(feature, axis=-1)
+        feature_max = tf.nn.max_pool(feature, [1, self.sequence_length, 1, 1], [1, 1, 1, 1], padding='VALID')
+        feature_max = tf.reshape(feature_max, shape=[-1, self.num_filters])
+
+        feature = tf.concat([feature_att, feature_max], axis=1)
+        # feature = self.pool_concat(feature, feature_att)
         print("feature:", feature)
         print("num_classes:", self.num_classes)
         self.logits = tf.layers.dense(feature, self.num_classes, activation=tf.nn.softmax)
@@ -96,16 +102,18 @@ class TextCNN:
     def cnn_resnet(self, inputs_origin):
         with tf.variable_scope("cnn_1"):
             inputs = tf.expand_dims(inputs_origin, -1)
-            filters = tf.get_variable("filters", [self.filter_sizes, self.rnn_dim*2, 1, self.rnn_dim*2], initializer=self.initializer)
-            outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.rnn_dim*2, 1], padding="SAME", name="conv")
-            outputs = tf.reshape(outputs, [-1, self.sequence_length, self.rnn_dim*2])
+            filters = tf.get_variable("filters", [self.filter_sizes, self.embed_size, 1, self.embed_size], initializer=self.initializer)
+            outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.embed_size, 1], padding="SAME", name="conv")
+            outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
+            outputs = tf.reshape(outputs, [-1, self.sequence_length, self.embed_size])
             outputs = tf.nn.relu(outputs)
             outputs = tf.layers.batch_normalization(outputs)
         with tf.variable_scope("cnn_2"):
             inputs = tf.expand_dims(outputs, -1)
-            filters = tf.get_variable("filters", [self.filter_sizes, self.rnn_dim*2, 1, self.rnn_dim*2], initializer=self.initializer)
-            outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.rnn_dim*2, 1], padding="SAME", name="conv")
-            outputs = tf.reshape(outputs, [-1, self.sequence_length, self.rnn_dim*2])
+            filters = tf.get_variable("filters", [self.filter_sizes, self.embed_size, 1, self.embed_size], initializer=self.initializer)
+            outputs = tf.nn.conv2d(inputs, filters, strides=[1, 1, self.embed_size, 1], padding="SAME", name="conv")
+            outputs = tf.nn.dropout(outputs, keep_prob=self.dropout_keep_prob)
+            outputs = tf.reshape(outputs, [-1, self.sequence_length, self.embed_size])
             # outputs = tf.nn.relu(outputs)
             outputs = tf.layers.batch_normalization(outputs)
         outputs = tf.nn.relu(tf.add(inputs_origin, outputs))
@@ -125,7 +133,7 @@ class TextCNN:
     #     return outputs
 
     def attention(self, inputs):
-        e = tf.layers.dense(tf.reshape(inputs, shape=[-1, self.num_filters]), 1, use_bias=False)
+        e = tf.layers.dense(tf.reshape(inputs, shape=[-1, self.rnn_dim*2]), 1, use_bias=False)
         e = tf.nn.tanh(tf.reshape(e, shape=[-1, self.num_steps]))
         a = tf.exp(e) / (tf.reduce_sum(e, axis=1, keep_dims=True) + 0.00001)
         print("a:", a)
