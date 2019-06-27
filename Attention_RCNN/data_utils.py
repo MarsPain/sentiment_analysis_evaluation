@@ -34,7 +34,7 @@ def seg_words(contents, tokenize_style):
                     pass
                     # print("发现停用词：%s" % word)
             # print(" ".join(segs_new))
-            string_segs.append(" ".join(segs_new))
+            string_segs.append(segs_new)
     else:
         stopwords = stopwordslist(stopwords_path)
         stopwords_set = set(stopwords)
@@ -47,7 +47,7 @@ def seg_words(contents, tokenize_style):
                     segs_new.append(word)
                 else:
                     pass
-            string_segs.append(" ".join(segs_new))
+            string_segs.append(segs_new)
     return string_segs
 
 
@@ -82,7 +82,7 @@ def create_dict(string_train, label_list, path, vocab_size):
     c_inputs = Counter()    # Counter用于统计字符串里某个字符出现的次数
     vocab_list = []  # 存储高词频的word及其相应的频数
     for string in string_train:
-        c_inputs.update(string.split(" "))
+        c_inputs.update(string)
         vocab_list = c_inputs.most_common(vocab_size)  # 参数对word数量进行限制
     for i, word_freq in enumerate(vocab_list):
         # print(word_freq)  # word_freq是word和相应词频的元组
@@ -196,7 +196,8 @@ def sentence_word_to_index(string, word_to_index, label_train_dict, label_to_ind
     sentences = []
     for s in string:
         # print(s)
-        word_list = s.split(" ")
+        # word_list = s.split(" ")
+        word_list = s
         # word_to_index只保存了预先设置的词库大小，所以没存储的词被初始化为UNK_ID
         sentence = [word_to_index.get(word, UNK_ID) for word in word_list]
         # print(sentence)

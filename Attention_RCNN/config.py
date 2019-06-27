@@ -4,9 +4,9 @@
 column_index = 2
 num_classes = 4
 num_epochs = 30
-batch_size = 256
-vocab_size = 30000
-tokenize_style = "word"
+batch_size = 128
+vocab_size = 10000
+tokenize_style = "char"
 embed_size = 300
 filter_sizes = 3
 num_filters = 128
