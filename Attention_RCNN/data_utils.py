@@ -13,7 +13,8 @@ _PAD = "_PAD"
 _UNK = "UNK"
 
 
-stopwords_path = "data/stop_words_2.txt"
+# stopwords_path = "data/stop_words_2.txt"
+stopwords_path = "data/stopwords.txt"
 
 
 def seg_words(contents, tokenize_style):

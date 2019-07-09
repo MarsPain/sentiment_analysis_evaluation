@@ -25,8 +25,8 @@ tf.app.flags.DEFINE_string("train_data_path", "../data/sentiment_analysis_traini
 tf.app.flags.DEFINE_string("dev_data_path", "../data/sentiment_analysis_validationset.csv", "path of traning data.")
 tf.app.flags.DEFINE_string("test_data_path", "../data/sentiment_analysis_testa.csv", "path of traning data.")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model.txt", "word2vec's embedding for word")
-tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.txt", "word2vec's embedding for word")
-# tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model_sg.txt", "word2vec's embedding for word")
+# tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_word_model_sg.txt", "word2vec's embedding for word")
+tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model_sg.txt", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for word")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/word2vec_char_model.txt", "word2vec's embedding for char")
 # tf.app.flags.DEFINE_string("word2vec_model_path", "data/wiki_100.utf8", "word2vec's embedding for char")
@@ -91,8 +91,8 @@ class Main:
         logger.info("start seg train data")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
-        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid.pkl")
-        # string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid_char.pkl")
+        # string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid.pkl")
+        string_train_valid = os.path.join(FLAGS.pkl_dir, "string_train_valid_char.pkl")
         if os.path.exists(string_train_valid):  # 若word_label_path已存在
             with open(string_train_valid, 'rb') as f:
                 self.string_train, self.string_valid = pickle.load(f)
@@ -120,8 +120,8 @@ class Main:
         logger.info("start get dict")
         if not os.path.isdir(FLAGS.pkl_dir):   # 创建存储临时字典数据的目录
             os.makedirs(FLAGS.pkl_dir)
-        word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict.pkl")    # 存储word和label与index之间的双向映射字典
-        # word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict_char.pkl")    # 存储word和label与index之间的双向映射字典
+        # word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict.pkl")    # 存储word和label与index之间的双向映射字典
+        word_label_dict = os.path.join(FLAGS.pkl_dir, "word_label_dict_char.pkl")    # 存储word和label与index之间的双向映射字典
         if os.path.exists(word_label_dict):  # 若word_label_path已存在
             with open(word_label_dict, 'rb') as dict_f:
                 self.word_to_index, self.index_to_word, self.label_to_index, self.index_to_label = pickle.load(dict_f)
@@ -133,8 +133,8 @@ class Main:
 
     def get_data(self):
         logger.info("start get data")
-        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_4.pkl")
-        # train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_char.pkl")
+        # train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_4.pkl")
+        train_valid_test = os.path.join(FLAGS.pkl_dir, "train_valid_test_char.pkl")
         if os.path.exists(train_valid_test):    # 若train_valid_test已被处理和存储
             with open(train_valid_test, 'rb') as data_f:
                 train_data, valid_data, self.label_weight_dict = pickle.load(data_f)
